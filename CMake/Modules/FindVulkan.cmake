@@ -69,7 +69,7 @@ This module defines :prop_tgt:`IMPORTED` targets if Vulkan has been found:
   .. versionadded:: 3.21
 
   The glslangValidator tool, if found.  It is used to compile GLSL and
-  HLSL shaders into SPIR-V.
+  HLSL Shaders into SPIR-V.
 
 ``Vulkan::glslang``
   .. versionadded:: 3.24

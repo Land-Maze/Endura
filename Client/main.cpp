@@ -2,6 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -52,11 +53,107 @@ public:
 
 private:
 
+	void createCommandPool() {
+		vk::CommandPoolCreateInfo poolInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer, .queueFamilyIndex = graphicsFamilyIndex };
+		commandPool = vk::raii::CommandPool( device, poolInfo );
+	}
+
+	static std::vector<char> readFile(const std::string& filename) {
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open()) {
+			throw std::runtime_error("failed to open file!");
+		}
+
+		std::vector<char> buffer(file.tellg());
+
+		file.seekg(0, std::ios::beg);
+		file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+
+		file.close();
+
+		return buffer;
+	}
+
+	[[nodiscard]]
+	vk::raii::ShaderModule createShaderModule(const std::vector<char>& code) const {
+		vk::ShaderModuleCreateInfo createInfo{ .codeSize = code.size() * sizeof(char), .pCode = reinterpret_cast<const uint32_t*>(code.data()) };
+
+		vk::raii::ShaderModule shaderModule{ device, createInfo };
+
+		return shaderModule;
+	}
+
+	void createGraphicsPipeline() {
+		auto shaderCode = readFile("Assets/Shaders/slang.spv");
+		auto shaderModule = createShaderModule(shaderCode);
+
+		vk::PipelineShaderStageCreateInfo vertShaderStageInfo{ .stage = vk::ShaderStageFlagBits::eVertex, .module = shaderModule,  .pName = "vertMain" };
+		vk::PipelineShaderStageCreateInfo fragShaderStageInfo{ .stage = vk::ShaderStageFlagBits::eFragment, .module = shaderModule, .pName = "fragMain" };
+
+		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+
+		vk::PipelineInputAssemblyStateCreateInfo inputAssembly{  .topology = vk::PrimitiveTopology::eTriangleList };
+
+		std::vector dynamicStates = {
+			vk::DynamicState::eViewport,
+			vk::DynamicState::eScissor
+		};
+
+		vk::PipelineViewportStateCreateInfo viewportState{ .viewportCount = 1, .scissorCount = 1 };
+
+		vk::PipelineDynamicStateCreateInfo dynamicState{ .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data() };
+
+		vk::PipelineRasterizationStateCreateInfo rasterizer{  .depthClampEnable = vk::False, .rasterizerDiscardEnable = vk::False,
+		 .polygonMode = vk::PolygonMode::eFill, .cullMode = vk::CullModeFlagBits::eBack,
+		 .frontFace = vk::FrontFace::eClockwise, .depthBiasEnable = vk::False,
+		 .depthBiasSlopeFactor = 1.0f, .lineWidth = 1.0f };
+
+		vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+		colorBlendAttachment.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+		colorBlendAttachment.blendEnable = vk::True;
+		colorBlendAttachment.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha;
+		colorBlendAttachment.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha;
+		colorBlendAttachment.colorBlendOp = vk::BlendOp::eAdd;
+		colorBlendAttachment.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		colorBlendAttachment.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		colorBlendAttachment.alphaBlendOp = vk::BlendOp::eAdd;
+
+		vk::PipelineColorBlendStateCreateInfo colorBlending{.logicOpEnable = vk::False, .logicOp =  vk::LogicOp::eCopy, .attachmentCount = 1, .pAttachments =  &colorBlendAttachment };
+
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{  .setLayoutCount = 0, .pushConstantRangeCount = 0 };
+
+		pipelineLayout = vk::raii::PipelineLayout( device, pipelineLayoutInfo );
+		vk::PipelineMultisampleStateCreateInfo multisampling{.rasterizationSamples = vk::SampleCountFlagBits::e1, .sampleShadingEnable = vk::False};
+
+		vk::PipelineRenderingCreateInfo pipelineRenderingCreateInfo{ .colorAttachmentCount = 1, .pColorAttachmentFormats = &swapChainImageFormat };
+		vk::GraphicsPipelineCreateInfo pipelineInfo{ .pNext = &pipelineRenderingCreateInfo,
+			.stageCount = 2, .pStages = shaderStages,
+			.pVertexInputState = &vertexInputInfo, .pInputAssemblyState = &inputAssembly,
+			.pViewportState = &viewportState, .pRasterizationState = &rasterizer,
+			.pMultisampleState = &multisampling, .pColorBlendState = &colorBlending,
+			.pDynamicState = &dynamicState, .layout = pipelineLayout, .renderPass = nullptr };
+
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
+
+		graphicsPipeline = vk::raii::Pipeline(device, VK_NULL_HANDLE, pipelineInfo);
+	}
+
 	void createImageViews() {
 		swapChainImageViews.clear();
 
 		vk::ImageViewCreateInfo imageViewCreateInfo{ .viewType = vk::ImageViewType::e2D, .format = swapChainImageFormat,
 		  .subresourceRange = { vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } };
+
+		swapChainImageViews.reserve(swapChainImageViews.size());
+
+		for (auto image : swapChainImages) {
+			imageViewCreateInfo.image = image;
+			swapChainImageViews.emplace_back( device, imageViewCreateInfo );
+		}
 	}
 
 	void createSwapChain() {
@@ -197,12 +294,15 @@ private:
 
 	    // query for Vulkan 1.3 features
 	    auto features = physicalDevice.getFeatures2();
+		vk::PhysicalDeviceVulkan11Features vulkan11Features;
+		vulkan11Features.shaderDrawParameters = vk::True; // Enable it if SPIR-V complains about enabling this
 	    vk::PhysicalDeviceVulkan13Features vulkan13Features;
 	    vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures;
 	    vulkan13Features.dynamicRendering = vk::True;
 	    extendedDynamicStateFeatures.extendedDynamicState = vk::True;
 	    vulkan13Features.pNext = &extendedDynamicStateFeatures;
-	    features.pNext = &vulkan13Features;
+		vulkan11Features.pNext = &vulkan13Features;
+	    features.pNext = vulkan11Features;
 
 
 	    // create a Device
@@ -327,6 +427,8 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createGraphicsPipeline();
+		createCommandPool();
 	}
 
 	void createInstance() {
@@ -334,7 +436,7 @@ private:
 				.applicationVersion = VK_MAKE_VERSION( 1, 0, 0 ),
 				.pEngineName        = "No Engine",
 				.engineVersion      = VK_MAKE_VERSION( 1, 0, 0 ),
-				.apiVersion         = vk::ApiVersion14 };
+				.apiVersion         = vk::ApiVersion13 };
 
 		std::vector<char const*> requiredLayers;
 		if (enableValidationLayers) {
@@ -392,6 +494,9 @@ private:
 	vk::Format swapChainImageFormat = vk::Format::eUndefined;
 	vk::Extent2D swapChainExtent;
 	std::vector<vk::raii::ImageView> swapChainImageViews;
+	vk::raii::PipelineLayout pipelineLayout = nullptr;
+	vk::raii::Pipeline graphicsPipeline = nullptr;
+	vk::raii::CommandPool commandPool = nullptr;
 };
 
 int main() {

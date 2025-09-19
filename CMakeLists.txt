@@ -10,6 +10,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake/Modules")
 include(SetupVulkan OPTIONAL)
 include(FindVulkan OPTIONAL)
+include(CompileShaders OPTIONAL)
 
 add_subdirectory(Dependencies)
 
