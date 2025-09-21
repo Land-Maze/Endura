@@ -1,2 +1,8 @@
-.idea
+.idea/*
 blog/
+!.idea/codeStyles/
+!.idea/runConfigurations/
+!.idea/inspectionProfiles/
+!.idea/misc.xml
+!.idea/modules.xml
+!.idea/cmake.xml

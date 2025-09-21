@@ -54,6 +54,22 @@ public:
 	}
 
 private:
+
+	void cleanupSwapChain() {
+		swapChainImageViews.clear();
+		swapChain = nullptr;
+	}
+
+
+	void recreateSwapChain() {
+		device.waitIdle();
+
+		cleanupSwapChain();
+
+		createSwapChain();
+		createImageViews();
+	}
+
 	void createSyncObjects()
 	{
 		presentCompleteSemaphore = vk::raii::Semaphore(device, vk::SemaphoreCreateInfo());
@@ -68,8 +84,15 @@ private:
 	{
 		graphicsQueue.waitIdle();
 
-		auto [result, imageIndex] = swapChain.acquireNextImage(UINT64_MAX, *presentCompleteSemaphore, nullptr);
+		auto [result, imageIndex] = swapChain.acquireNextImage( UINT64_MAX, *presentCompleteSemaphore, nullptr );
 
+		if (result == vk::Result::eErrorOutOfDateKHR) {
+			recreateSwapChain();
+			return;
+		}
+		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+			throw std::runtime_error("failed to acquire swap chain image!");
+		}
 		recordCommandBuffer(imageIndex);
 		device.resetFences(*drawFence);
 
@@ -714,10 +737,10 @@ private:
 		device.waitIdle();
 	}
 
-	void cleanup()
-	{
-		glfwDestroyWindow(window);
+	void cleanup() {
+		cleanupSwapChain();
 
+		glfwDestroyWindow(window);
 		glfwTerminate();
 	}
 
