@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.0)
 project(Endura LANGUAGES CXX)
 
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -12,9 +13,11 @@ include(SetupVulkan OPTIONAL)
 include(FindVulkan OPTIONAL)
 include(CompileShaders OPTIONAL)
 
+setup_vulkan_cpp_module(Endura)
+
 add_subdirectory(Dependencies)
 
-#add_subdirectory(Engine)
+add_subdirectory(Engine)
 #add_subdirectory(Game)
 
 add_subdirectory(Client)
