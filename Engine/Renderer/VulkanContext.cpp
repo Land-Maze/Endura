@@ -45,8 +45,9 @@ namespace Renderer
                 break;
             }
         }
-        if (!areLayersSupported) throw std::runtime_error(
-            "One or more required layers are not supported: areLayersSupported is false.");
+        if (!areLayersSupported)
+            throw std::runtime_error(
+                "One or more required layers are not supported: areLayersSupported is false.");
 
         const auto extension = getGLFWRequiredExtension();
 
@@ -81,8 +82,9 @@ namespace Renderer
                 break;
             }
         }
-        if (!areExtensionsSupported) throw std::runtime_error(
-            "One or more required extensions are not supported: areExtensionsSupported is false.");
+        if (!areExtensionsSupported)
+            throw std::runtime_error(
+                "One or more required extensions are not supported: areExtensionsSupported is false.");
 
         std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
@@ -95,13 +97,13 @@ namespace Renderer
     {
         if constexpr (!enableValidationLayers) return;
 
-        vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
+        constexpr vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning);
-        vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
+        constexpr vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
             vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
             vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-        vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
+        constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
             vk::StructureType::eDebugUtilsMessengerCreateInfoEXT, nullptr, {}, severity_flags, message_type_flags,
             &debugCallback,
             nullptr);
@@ -122,17 +124,18 @@ namespace Renderer
 
     void VulkanContext::pickPhysicalDevice()
     {
-        auto devices = _instance.enumeratePhysicalDevices();
+        const auto devices = _instance.enumeratePhysicalDevices();
 
-        if (devices.empty()) throw std::runtime_error(
-            "No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?");
+        if (devices.empty())
+            throw std::runtime_error(
+                "No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?");
 
         uint64_t deviceScore = 0;
 
         for (const auto device : devices)
         {
-            auto deviceProperties = device.getProperties();
-            auto deviceFeatures = device.getFeatures();
+            const auto deviceProperties = device.getProperties();
+            const auto deviceFeatures = device.getFeatures();
             uint64_t score = 0;
 
             if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
@@ -152,10 +155,12 @@ namespace Renderer
             }
         }
 
-        if (_physical_device == VK_NULL_HANDLE) throw std::runtime_error(
-            "No suitable device with required features was found. Is the GPU enabled?");
+        if (_physical_device == VK_NULL_HANDLE)
+            throw std::runtime_error(
+                "No suitable device with required features was found. Is the GPU enabled?");
 
-        std::printf("Device -> Name: %s, API v%u", _physical_device.getProperties().deviceName.data(), _physical_device.getProperties().apiVersion);
+        std::printf("Device -> Name: %s, API v%u", _physical_device.getProperties().deviceName.data(),
+                    _physical_device.getProperties().apiVersion);
     }
 
     void VulkanContext::findBestQueueFamilyIndexes()
