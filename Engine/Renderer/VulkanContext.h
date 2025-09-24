@@ -2,6 +2,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
 #include "vulkan/vulkan_raii.hpp"
 
 #ifdef NDEBUG
@@ -48,6 +49,10 @@ namespace Renderer
         vk::raii::Device _device = VK_NULL_HANDLE;
 
         vk::raii::SurfaceKHR _surface = VK_NULL_HANDLE;
+
+        vk::raii::Queue _graphics_queue = VK_NULL_HANDLE;
+        vk::raii::Queue _present_queue = VK_NULL_HANDLE;
+
         uint32_t _graphics_family_index = UINT32_MAX;
         uint32_t _present_family_index = UINT32_MAX;
 
@@ -94,5 +99,10 @@ namespace Renderer
          * Creates logical device
          */
         void createLogicalDevice();
+
+        /**
+         * Creates graphical and present queue
+         */
+        void createQueues();
     };
 }

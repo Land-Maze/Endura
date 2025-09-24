@@ -16,6 +16,7 @@ namespace Renderer
         findBestQueueFamilyIndexes();
 
         createLogicalDevice();
+        createQueues();
     }
 
     void VulkanContext::createInstance()
@@ -213,6 +214,12 @@ namespace Renderer
                 "Failed to create window surface: glfwCreateWindowSurface returned non-zero value.");
 
         _surface = vk::raii::SurfaceKHR(_instance, surface);
+    }
+
+    void VulkanContext::createQueues()
+    {
+        _graphics_queue = vk::raii::Queue(_device, _graphics_family_index, 0);
+        _present_queue = vk::raii::Queue(_device, _present_family_index, 0);
     }
 
     void VulkanContext::createLogicalDevice()
