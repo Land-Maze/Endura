@@ -793,9 +793,11 @@
 
 
 #include <Core/Window.h>
+#include <Renderer/VulkanContext.h>
 
 int main() {
     Core::Window window;
+    Renderer::VulkanContext vkContext;
 
     window.create({});
 }
