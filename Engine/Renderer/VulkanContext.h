@@ -38,6 +38,8 @@ namespace Renderer
         vk::raii::Context _context;
         vk::raii::Instance _instance = nullptr;
         vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
+        vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
+        vk::PhysicalDeviceFeatures _device_features;
 
         /**
          * Creates Vulkan instance
@@ -61,5 +63,10 @@ namespace Renderer
                                                               const vk::DebugUtilsMessengerCallbackDataEXT*
                                                               pCallbackData,
                                                               void*);
+
+        /**
+         * Picks the best GPU with point system
+         */
+        void pickPhysicalDevice();
     };
 }

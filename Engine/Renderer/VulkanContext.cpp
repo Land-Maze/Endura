@@ -10,6 +10,7 @@ namespace Renderer
     {
         createInstance();
         setupDebugMessenger();
+        pickPhysicalDevice();
     }
 
     void VulkanContext::createInstance()
@@ -114,5 +115,43 @@ namespace Renderer
             std::endl;
 
         return vk::False;
+    }
+
+    void VulkanContext::pickPhysicalDevice()
+    {
+        auto devices = _instance.enumeratePhysicalDevices();
+
+        if (devices.empty()) throw std::runtime_error(
+            "No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?");
+
+        uint64_t deviceScore = 0;
+
+        for (const auto device : devices)
+        {
+            auto deviceProperties = device.getProperties();
+            auto deviceFeatures = device.getFeatures();
+            uint64_t score = 0;
+
+            if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+            {
+                score += 1000;
+            }
+
+            score += deviceProperties.limits.maxImageDimension2D;
+
+            if (deviceFeatures.geometryShader == VK_FALSE) continue;
+
+            if (score > deviceScore)
+            {
+                _device_features = deviceFeatures;
+                _physical_device = std::move(device);
+                deviceScore = score;
+            }
+        }
+
+        if (_physical_device == VK_NULL_HANDLE) throw std::runtime_error(
+            "No suitable device with required features was found. Is the GPU enabled?");
+
+        std::printf("Device -> Name: %s, API v%u", _physical_device.getProperties().deviceName.data(), _physical_device.getProperties().apiVersion);
     }
 }
