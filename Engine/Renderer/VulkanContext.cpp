@@ -1,5 +1,7 @@
 #include "VulkanContext.h"
 
+#include <iostream>
+#include <ostream>
 #include <GLFW/glfw3.h>
 
 namespace Renderer
@@ -7,7 +9,7 @@ namespace Renderer
     void VulkanContext::InitializeVulkan()
     {
         createInstance();
-        setupDebugMessanger();
+        setupDebugMessenger();
     }
 
     void VulkanContext::createInstance()
@@ -29,7 +31,7 @@ namespace Renderer
             bool isLayerSupported = false;
             for (auto supportedLayer : layerProperties)
             {
-                if (strcmp(supportedLayer.layerName, layer))
+                if (strcmp(supportedLayer.layerName, layer) == 0)
                 {
                     isLayerSupported = true;
                     break;
@@ -64,7 +66,7 @@ namespace Renderer
             bool isExtensionSupported = false;
             for (auto supportedExtension : extensionProperties)
             {
-                if (strcmp(supportedExtension.extensionName, glfwExtensions[i]))
+                if (strcmp(supportedExtension.extensionName, glfwExtensions[i]) == 0)
                 {
                     isExtensionSupported = true;
                     break;
@@ -83,5 +85,34 @@ namespace Renderer
         if (enableValidationLayers) extensions.push_back(vk::EXTDebugUtilsExtensionName);
 
         return extensions;
+    }
+
+    void VulkanContext::setupDebugMessenger()
+    {
+        if constexpr (!enableValidationLayers) return;
+
+        vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning);
+        vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
+            vk::StructureType::eDebugUtilsMessengerCreateInfoEXT, nullptr, {}, severity_flags, message_type_flags,
+            &debugCallback,
+            nullptr);
+
+        debugMessenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
+    }
+
+    vk::Bool32 VulkanContext::debugCallback(const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+                                            const vk::DebugUtilsMessageTypeFlagsEXT type,
+                                            const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
+    {
+        // FIXME: Implement Logger and put this there
+        std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage <<
+            std::endl;
+
+        return vk::False;
     }
 }

@@ -11,14 +11,14 @@ constexpr bool enableValidationLayers = true;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+    "VK_LAYER_KHRONOS_validation"
 };
 
 const std::vector deviceExtensions = {
-	vk::KHRSwapchainExtensionName,
-	vk::KHRSpirv14ExtensionName,
-	vk::KHRSynchronization2ExtensionName,
-	vk::KHRCreateRenderpass2ExtensionName,
+    vk::KHRSwapchainExtensionName,
+    vk::KHRSpirv14ExtensionName,
+    vk::KHRSynchronization2ExtensionName,
+    vk::KHRCreateRenderpass2ExtensionName,
 };
 
 namespace Renderer
@@ -26,8 +26,8 @@ namespace Renderer
     class VulkanContext
     {
     public:
-
         VulkanContext() = default;
+        ~VulkanContext() = default;
 
         /**
          * Initializes resources such as: instances, devices, queues, buffers, etc.
@@ -37,6 +37,7 @@ namespace Renderer
     private:
         vk::raii::Context _context;
         vk::raii::Instance _instance = nullptr;
+        vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
 
         /**
          * Creates Vulkan instance
@@ -44,15 +45,21 @@ namespace Renderer
         void createInstance();
 
         /**
-         * Sets custom callback to the debug messanger
+         * Sets custom callback to the debug messenger
          */
-        void setupDebugMessanger();
+        void setupDebugMessenger();
 
         /**
          * Checks if the GLFW required extensions are available, and returns them.
          *
-         * @return Extension vector
+         * @return Extensions vector
          */
         std::vector<const char*> getGLFWRequiredExtension() const;
+
+        static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                              vk::DebugUtilsMessageTypeFlagsEXT type,
+                                                              const vk::DebugUtilsMessengerCallbackDataEXT*
+                                                              pCallbackData,
+                                                              void*);
     };
 }
