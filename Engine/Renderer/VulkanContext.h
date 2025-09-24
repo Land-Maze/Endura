@@ -36,8 +36,10 @@ namespace Renderer
 
     private:
         vk::raii::Context _context;
-        vk::raii::Instance _instance = nullptr;
-        vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
+        vk::raii::Instance _instance = VK_NULL_HANDLE;
+
+        vk::raii::DebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
+
         vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
         vk::PhysicalDeviceFeatures _device_features;
 

@@ -44,7 +44,8 @@ namespace Renderer
                 break;
             }
         }
-        if (!areLayersSupported) throw std::runtime_error("One or more required layers are not supported!");
+        if (!areLayersSupported) throw std::runtime_error(
+            "One or more required layers are not supported: areLayersSupported is false.");
 
         const auto extension = getGLFWRequiredExtension();
 
@@ -79,7 +80,8 @@ namespace Renderer
                 break;
             }
         }
-        if (!areExtensionsSupported) throw std::runtime_error("One or more required extensions are not supported!");
+        if (!areExtensionsSupported) throw std::runtime_error(
+            "One or more required extensions are not supported: areExtensionsSupported is false.");
 
         std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
@@ -96,14 +98,14 @@ namespace Renderer
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning);
         vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
-            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
             vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
         vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
             vk::StructureType::eDebugUtilsMessengerCreateInfoEXT, nullptr, {}, severity_flags, message_type_flags,
             &debugCallback,
             nullptr);
 
-        debugMessenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
+        debug_messenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
     }
 
     vk::Bool32 VulkanContext::debugCallback(const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
