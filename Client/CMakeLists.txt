@@ -12,5 +12,5 @@ add_slang_shader_target(MyShaders SOURCES shader.slang)
 add_dependencies(Client MyShaders)
 
 target_link_libraries(Client
-		PRIVATE EngineCore
+		PRIVATE EngineCore EngineRenderer
 )

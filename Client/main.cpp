@@ -798,6 +798,7 @@
 int main() {
     Core::Window window;
     Renderer::VulkanContext vkContext;
+    vkContext.InitializeVulkan();
 
     window.create({});
 }
