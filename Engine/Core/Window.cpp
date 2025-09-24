@@ -45,17 +45,18 @@ namespace Core
             return;
         }
 
-        int count;
-        const auto modes = glfwGetVideoModes(_monitor, &count);
+        const auto mode = glfwGetVideoMode(_monitor);
 
 
         if (_isFullscreen)
-            _window = Smart_GLFWWindow(glfwCreateWindow(modes[0].width, modes[0].height, window_params.title.c_str(),
+            _window = Smart_GLFWWindow(glfwCreateWindow(mode->width, mode->height, window_params.title.c_str(),
                                                         _monitor, nullptr));
         else
             _window = Smart_GLFWWindow(glfwCreateWindow(window_params.width, window_params.height,
                                                         window_params.title.c_str(),
                                                         nullptr, nullptr));
+
+        _monitorRatio = static_cast<float>(mode->width) / static_cast<float>(mode->height);
 
         if (!_window)
             throw std::runtime_error(
@@ -86,7 +87,7 @@ namespace Core
         return glfwWindowShouldClose(_window.get());
     }
 
-    void Window::setShouldClose(bool value) const
+    void Window::setShouldClose(const bool value)
     {
         if (!_window) return;
 
@@ -105,7 +106,7 @@ namespace Core
         return _window != nullptr;
     }
 
-    void Window::setDimensions(int width, int height)
+    void Window::setDimensions(const int width, const int height)
     {
         if (!_window) return;
 
