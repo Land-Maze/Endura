@@ -9,9 +9,13 @@ namespace Renderer
     {
         createInstance();
         setupDebugMessenger();
+
         pickPhysicalDevice();
+
         createSurface(window);
         findBestQueueFamilyIndexes();
+
+        createLogicalDevice();
     }
 
     void VulkanContext::createInstance()
@@ -187,7 +191,8 @@ namespace Renderer
                     _graphics_family_index = i;
                 }
 
-                if (_physical_device.getSurfaceSupportKHR(static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics), _surface))
+                if (_physical_device.getSurfaceSupportKHR(
+                    static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics), _surface))
                 {
                     _present_family_index = _graphics_family_index;
                     break;
@@ -195,9 +200,8 @@ namespace Renderer
             }
 
         if ((_graphics_family_index == UINT32_MAX) || (_present_family_index == UINT32_MAX))
-            throw std::runtime_error("Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set.");
-
-
+            throw std::runtime_error(
+                "Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set.");
     }
 
     void VulkanContext::createSurface(GLFWwindow* window)
@@ -209,5 +213,39 @@ namespace Renderer
                 "Failed to create window surface: glfwCreateWindowSurface returned non-zero value.");
 
         _surface = vk::raii::SurfaceKHR(_instance, surface);
+    }
+
+    void VulkanContext::createLogicalDevice()
+    {
+        auto features = _physical_device.getFeatures2();
+
+        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures;
+        extendedDynamicStateFeatures.extendedDynamicState = vk::True;
+
+        vk::PhysicalDeviceVulkan11Features vulkan11Features;
+        vulkan11Features.setShaderDrawParameters(vk::True);
+
+        vk::PhysicalDeviceVulkan12Features vulkan12Features;
+
+        vk::PhysicalDeviceVulkan13Features vulkan13Features;
+        vulkan13Features.setDynamicRendering(vk::True);
+        vulkan13Features.setSynchronization2(vk::True);
+
+        vulkan11Features.setPNext(extendedDynamicStateFeatures);
+        vulkan12Features.setPNext(vulkan11Features);
+        vulkan13Features.setPNext(vulkan12Features);
+        features.setPNext(vulkan13Features);
+
+        constexpr float queuePriority = 0.0f;
+
+        vk::DeviceQueueCreateInfo deviceQueueCreateInfo(vk::StructureType::eDeviceQueueCreateInfo, nullptr, {},
+                                                        _graphics_family_index, 1, &queuePriority);
+
+        vk::DeviceCreateInfo deviceCreateInfo(vk::StructureType::eDeviceCreateInfo, nullptr, {}, 1,
+                                              &deviceQueueCreateInfo, static_cast<uint32_t>(validationLayers.size()),
+                                              validationLayers.data(), static_cast<uint32_t>(deviceExtensions.size()),
+                                              deviceExtensions.data());
+
+        _device = vk::raii::Device(_physical_device, deviceCreateInfo);
     }
 }
