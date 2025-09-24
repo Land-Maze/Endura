@@ -1,5 +1,7 @@
 #pragma once
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 #include "vulkan/vulkan_raii.hpp"
 
 #ifdef NDEBUG
@@ -18,7 +20,7 @@ const std::vector deviceExtensions = {
     vk::KHRSwapchainExtensionName,
     vk::KHRSpirv14ExtensionName,
     vk::KHRSynchronization2ExtensionName,
-    vk::KHRCreateRenderpass2ExtensionName,
+    vk::KHRCreateRenderpass2ExtensionName
 };
 
 namespace Renderer
@@ -32,7 +34,7 @@ namespace Renderer
         /**
          * Initializes resources such as: instances, devices, queues, buffers, etc.
          */
-        void InitializeVulkan();
+        void InitializeVulkan(GLFWwindow* window);
 
     private:
         vk::raii::Context _context;
@@ -43,6 +45,9 @@ namespace Renderer
         vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
         vk::PhysicalDeviceFeatures _device_features;
 
+        vk::raii::SurfaceKHR _surface = VK_NULL_HANDLE;
+        uint32_t _graphics_family_index = UINT32_MAX;
+        uint32_t _present_family_index = UINT32_MAX;
         /**
          * Creates Vulkan instance
          */
@@ -70,5 +75,14 @@ namespace Renderer
          * Picks the best GPU with point system
          */
         void pickPhysicalDevice();
+        /**
+         * Finds the best queue family (with both present and graphics queue)
+         */
+        void findBestQueueFamilyIndexes();
+        /**
+         * This will create a Vulkan Surface
+         * @param window GLFW handle of the window
+         */
+        void createSurface(GLFWwindow* window);
     };
 }

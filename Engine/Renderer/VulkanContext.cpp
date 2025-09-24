@@ -2,15 +2,16 @@
 
 #include <iostream>
 #include <ostream>
-#include <GLFW/glfw3.h>
 
 namespace Renderer
 {
-    void VulkanContext::InitializeVulkan()
+    void VulkanContext::InitializeVulkan(GLFWwindow* window)
     {
         createInstance();
         setupDebugMessenger();
         pickPhysicalDevice();
+        createSurface(window);
+        findBestQueueFamilyIndexes();
     }
 
     void VulkanContext::createInstance()
@@ -155,5 +156,53 @@ namespace Renderer
             "No suitable device with required features was found. Is the GPU enabled?");
 
         std::printf("Device -> Name: %s, API v%u", _physical_device.getProperties().deviceName.data(), _physical_device.getProperties().apiVersion);
+    }
+
+    void VulkanContext::findBestQueueFamilyIndexes()
+    {
+        const std::vector<vk::QueueFamilyProperties> queue_families = _physical_device.getQueueFamilyProperties();
+
+        for (uint32_t i = 0; i < queue_families.size(); i++)
+        {
+            if (const auto family = queue_families[i]; family.queueFlags & vk::QueueFlagBits::eGraphics &&
+                _physical_device.getSurfaceSupportKHR(i, _surface))
+            {
+                _graphics_family_index = i;
+                _present_family_index = i;
+                break;
+            }
+        }
+
+        if (_graphics_family_index == UINT32_MAX)
+            for (uint32_t i = 0; i < queue_families.size(); i++)
+            {
+                const auto family = queue_families[i];
+                if ((family.queueFlags & vk::QueueFlagBits::eGraphics) && (_graphics_family_index != UINT32_MAX))
+                {
+                    _graphics_family_index = i;
+                }
+
+                if (_physical_device.getSurfaceSupportKHR(static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics), _surface))
+                {
+                    _present_family_index = _graphics_family_index;
+                    break;
+                }
+            }
+
+        if ((_graphics_family_index == UINT32_MAX) || (_present_family_index == UINT32_MAX))
+            throw std::runtime_error("Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set.");
+
+
+    }
+
+    void VulkanContext::createSurface(GLFWwindow* window)
+    {
+        VkSurfaceKHR surface;
+
+        if (glfwCreateWindowSurface(*_instance, window, nullptr, &surface) != VK_SUCCESS)
+            throw std::runtime_error(
+                "Failed to create window surface: glfwCreateWindowSurface returned non-zero value.");
+
+        _surface = vk::raii::SurfaceKHR(_instance, surface);
     }
 }
