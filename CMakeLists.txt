@@ -9,11 +9,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMake/Modules")
-include(SetupVulkan OPTIONAL)
 include(FindVulkan OPTIONAL)
 include(CompileShaders OPTIONAL)
-
-setup_vulkan_cpp_module(Endura)
 
 add_subdirectory(Dependencies)
 
