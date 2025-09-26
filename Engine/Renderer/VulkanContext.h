@@ -3,7 +3,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "vulkan/vulkan_raii.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -13,11 +13,12 @@ constexpr bool enableValidationLayers = true;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
+inline std::vector validationLayers = {
+    "VK_LAYER_KHRONOS_validation",
+
 };
 
-const std::vector deviceExtensions = {
+inline std::vector deviceExtensions = {
     vk::KHRSwapchainExtensionName,
     vk::KHRSpirv14ExtensionName,
     vk::KHRSynchronization2ExtensionName,

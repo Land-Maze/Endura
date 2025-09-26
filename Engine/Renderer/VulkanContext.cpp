@@ -21,9 +21,11 @@ namespace Renderer
 
     void VulkanContext::createInstance()
     {
-        constexpr vk::ApplicationInfo application_info(vk::StructureType::eApplicationInfo, nullptr, "Endura",
-                                                       VK_MAKE_VERSION(0, 0, 1), "No Engine",
-                                                       VK_MAKE_API_VERSION(0, 0, 0, 1), vk::ApiVersion13);
+        constexpr vk::ApplicationInfo application_info(
+            "Endura",
+            VK_MAKE_VERSION(0, 0, 1), "No Engine",
+            VK_MAKE_API_VERSION(0, 0, 0, 1), vk::ApiVersion13
+        );
 
         std::vector<char const*> requiredLayers;
         if (enableValidationLayers)
@@ -56,9 +58,16 @@ namespace Renderer
 
         const auto extension = getGLFWRequiredExtension();
 
-        const vk::InstanceCreateInfo create_info(vk::StructureType::eInstanceCreateInfo, nullptr, {}, &application_info,
-                                                 requiredLayers.size(), requiredLayers.data(), extension.size(),
-                                                 extension.data());
+        const vk::InstanceCreateInfo create_info(
+            {
+            },
+            &application_info,
+            requiredLayers.size(),
+            requiredLayers.data(),
+            extension.size()
+            , extension.data(),
+            nullptr
+        );
 
         _instance = vk::raii::Instance(_context, create_info);
     }
@@ -109,9 +118,11 @@ namespace Renderer
             vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
             vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
         constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
-            vk::StructureType::eDebugUtilsMessengerCreateInfoEXT, nullptr, {}, severity_flags, message_type_flags,
-            &debugCallback,
-            nullptr);
+            {},
+            severity_flags,
+            message_type_flags,
+            &debugCallback
+        );
 
         debug_messenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
     }
@@ -150,7 +161,6 @@ namespace Renderer
 
             score += deviceProperties.limits.maxImageDimension2D;
 
-            if (deviceFeatures.geometryShader == VK_FALSE) continue;
 
             if (score > deviceScore)
             {
@@ -164,7 +174,7 @@ namespace Renderer
             throw std::runtime_error(
                 "No suitable device with required features was found. Is the GPU enabled?");
 
-        std::printf("Device -> Name: %s, API v%u", _physical_device.getProperties().deviceName.data(),
+        std::printf("Device -> Name: %s, API v%u\n", _physical_device.getProperties().deviceName.data(),
                     _physical_device.getProperties().apiVersion);
     }
 
@@ -245,13 +255,17 @@ namespace Renderer
 
         constexpr float queuePriority = 0.0f;
 
-        vk::DeviceQueueCreateInfo deviceQueueCreateInfo(vk::StructureType::eDeviceQueueCreateInfo, nullptr, {},
-                                                        _graphics_family_index, 1, &queuePriority);
+        vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
+            {},
+            _graphics_family_index, 1, &queuePriority
+        );
 
-        vk::DeviceCreateInfo deviceCreateInfo(vk::StructureType::eDeviceCreateInfo, nullptr, {}, 1,
-                                              &deviceQueueCreateInfo, static_cast<uint32_t>(validationLayers.size()),
-                                              validationLayers.data(), static_cast<uint32_t>(deviceExtensions.size()),
-                                              deviceExtensions.data());
+        vk::DeviceCreateInfo deviceCreateInfo(
+            {}, 1,
+            &deviceQueueCreateInfo, static_cast<uint32_t>(validationLayers.size()),
+            validationLayers.data(), static_cast<uint32_t>(deviceExtensions.size()),
+            deviceExtensions.data()
+        );
 
         _device = vk::raii::Device(_physical_device, deviceCreateInfo);
     }
