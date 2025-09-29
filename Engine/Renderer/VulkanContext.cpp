@@ -148,7 +148,7 @@ namespace Renderer
 
         uint64_t deviceScore = 0;
 
-        for (const auto device : devices)
+        for (auto device : devices)
         {
             const auto deviceProperties = device.getProperties();
             const auto deviceFeatures = device.getFeatures();
@@ -269,4 +269,6 @@ namespace Renderer
 
         _device = vk::raii::Device(_physical_device, deviceCreateInfo);
     }
+
+    
 }

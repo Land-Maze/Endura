@@ -30,4 +30,4 @@ if(NOT DEFINED Vulkan_INCLUDE_DIR)
 endif()
 
 add_library(Dependencies INTERFACE)
-target_link_libraries(Dependencies INTERFACE glfw glm Vulkan)
+target_link_libraries(Dependencies INTERFACE glfw glm vulkan)
