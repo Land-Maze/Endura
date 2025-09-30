@@ -13,6 +13,7 @@ include(FindVulkan OPTIONAL)
 include(CompileShaders OPTIONAL)
 
 add_subdirectory(Dependencies)
+add_subdirectory(Assets)
 
 add_subdirectory(Engine)
 #add_subdirectory(Game)

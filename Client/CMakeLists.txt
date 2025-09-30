@@ -8,9 +8,6 @@ add_executable(Client ${CLIENT_SOURCES})
 
 target_link_libraries(Client PRIVATE Dependencies)
 
-add_slang_shader_target(MyShaders SOURCES shader.slang)
-add_dependencies(Client MyShaders)
-
 target_compile_definitions(Client PUBLIC
 		VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
 		VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
