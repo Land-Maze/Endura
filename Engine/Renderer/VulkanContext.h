@@ -13,6 +13,8 @@ constexpr bool enableValidationLayers = true;
 
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
+constexpr int IMAGE_ARRAY_LAYERS = 1;
+
 inline std::vector validationLayers = {
     "VK_LAYER_KHRONOS_validation",
 
@@ -57,6 +59,12 @@ namespace Renderer
         uint32_t _graphics_family_index = UINT32_MAX;
         uint32_t _present_family_index = UINT32_MAX;
 
+        vk::raii::SwapchainKHR _swapChain = VK_NULL_HANDLE;
+        vk::Extent2D _swapChainExtent;
+        std::vector<vk::Image> swapChainImages;
+        std::vector<vk::raii::ImageView> swapChainImageViews;
+        vk::Format swapChainImageFormat = vk::Format::eUndefined;
+
         /**
          * Creates Vulkan instance
          */
@@ -72,7 +80,7 @@ namespace Renderer
          *
          * @return Extensions vector
          */
-        std::vector<const char*> getGLFWRequiredExtension() const;
+        [[nodiscard]] std::vector<const char*> getGLFWRequiredExtension() const;
 
         static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
                                                               vk::DebugUtilsMessageTypeFlagsEXT type,
@@ -105,5 +113,62 @@ namespace Renderer
          * Creates graphical and present queue
          */
         void createQueues();
+
+        /**
+         *  This is a helper function
+         *  Picks the swap surface format for the swap chain
+         *
+         * @param surfaceFormats Available surface formats from physical device
+         * @return Chosen swap surface format
+         */
+        static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& surfaceFormats);
+
+        /**
+         * This is a helper function
+         * Picks the present mode
+         *
+         * @param presentModes Available present modes
+         * @return Chosen present mode
+         */
+        static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
+        /**
+         * This is a helper function
+         * Returns swap extend in 2 dimension (width, height)
+         *
+         * @param surface_capabilities Surface capabilities
+         * @param window
+         * @return Chosen swap extent
+         */
+        static vk::Extent2D chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& surface_capabilities, GLFWwindow* window);
+
+        /**
+         * Creates swap chain
+         */
+        void createSwapChain(GLFWwindow* window);
+
+        /**
+         * Create image views
+         */
+        void createImageViews();
+
+        /**
+         * Creates graphical pipeline
+         */
+        void createGraphicsPipeline();
+
+        /**
+         * Creates command pools
+         */
+        void createCommandPool();
+
+        /**
+         * Creates Command buffers
+         */
+        void createCommandBuffer();
+
+        /**
+         * Creates sync objects such as: semaphores, and fences (only for now)
+         */
+        void createSyncObjects();
     };
 }
