@@ -18,6 +18,9 @@ namespace Renderer
 		createLogicalDevice();
 		createQueues();
 		createSwapChain(window);
+
+		createImageViews();
+
 	}
 
 	void VulkanContext::createInstance()
@@ -369,6 +372,15 @@ namespace Renderer
 
 	void VulkanContext::createImageViews()
 	{
+		swapChainImages.clear();
+		swapChainImageViews.reserve(swapChainImages.size());
+
+		for (const auto image : swapChainImages)
+		{
+			vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapChainImageFormat, {},
+			                                            {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+			swapChainImageViews.emplace_back(_device, imageViewCreateInfo);
+		}
 	}
 
 	void VulkanContext::createGraphicsPipeline()
