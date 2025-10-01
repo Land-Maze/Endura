@@ -9,7 +9,7 @@ namespace Assets
 	std::shared_ptr<AssetType::Shader> AssetManager::load<AssetType::Shader>(const std::string& filename)
 	{
 		auto shader = std::make_shared<AssetType::Shader>();
-		auto file = openFile("Shader/" + filename);
+		auto file = openFile("Shaders/" + filename + ".spv");
 		auto fileSize = file.tellg();
 		std::vector<char> buffer(fileSize);
 

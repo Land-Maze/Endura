@@ -21,7 +21,7 @@ namespace Assets
 	{
 	public:
 		template<typename T>
-		[[nodiscard]] std::shared_ptr<T> load(const std::string& filename);
+		[[nodiscard]] static std::shared_ptr<T> load(const std::string& filename);
 
 	private:
 		static std::ifstream openFile(const std::string& filename);
