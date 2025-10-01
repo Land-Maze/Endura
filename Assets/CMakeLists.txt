@@ -13,7 +13,7 @@ target_include_directories(Assets
 
 
 set(SHADER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Shaders)
-set(SHADER_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/Shaders)
+set(SHADER_BUILD_DIR ${CMAKE_BINARY_DIR}/Client/Shaders)
 file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${SHADER_SRC_DIR}/*.*")
 
 file(MAKE_DIRECTORY ${SHADER_BUILD_DIR})
@@ -37,6 +37,7 @@ endforeach()
 add_custom_target(CompileShaders ALL DEPENDS ${SPIRV_OUTPUTS})
 add_dependencies(Assets CompileShaders)
 
+set(CLIENT_BINARY_DIR ${CMAKE_BINARY_DIR}/Client)
 
 set(ASSET_FOLDERS Textures Meshes Shaders)
 
@@ -45,7 +46,7 @@ foreach(FOLDER ${ASSET_FOLDERS})
             TARGET Assets POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_CURRENT_SOURCE_DIR}/${FOLDER}
-            ${CMAKE_CURRENT_BINARY_DIR}/${FOLDER}
-            COMMENT "Copying ${FOLDER} folder to build directory"
+            ${CLIENT_BINARY_DIR}/${FOLDER}
+            COMMENT "Copying ${FOLDER} folder to Client runtime directory"
     )
 endforeach()
