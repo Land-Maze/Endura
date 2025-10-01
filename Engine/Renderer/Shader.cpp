@@ -2,8 +2,7 @@
 
 namespace Renderer
 {
-	Shader::Shader(const vk::raii::Device& device, const std::vector<uint32_t>& spirV,
-	               const vk::ShaderStageFlagBits stage)
+	Shader::Shader(const vk::raii::Device& device,  vk::ShaderStageFlagBits stage, const std::vector<uint32_t>& spirV)
 	{
 		this->stage = stage;
 

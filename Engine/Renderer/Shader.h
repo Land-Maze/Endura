@@ -5,7 +5,8 @@ namespace Renderer
 {
 	class Shader
 	{
-		Shader(const vk::raii::Device& device, const std::vector<uint32_t>& spirV, vk::ShaderStageFlagBits stage);
+	public:
+		Shader(const vk::raii::Device& device, vk::ShaderStageFlagBits stage, const std::vector<uint32_t>& spirV);
 
 		vk::ShaderStageFlagBits getStage() const;
 
