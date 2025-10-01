@@ -3,6 +3,9 @@
 #include <iostream>
 #include <ostream>
 
+#include <Renderer/Shader.h>
+#include <AssetManager.h>
+
 namespace Renderer
 {
 	void VulkanContext::InitializeVulkan(GLFWwindow* window)
@@ -21,6 +24,12 @@ namespace Renderer
 
 		createImageViews();
 
+		createGraphicsPipeline();
+
+		createCommandPool();
+		createCommandBuffer();
+
+		createSyncObjects();
 	}
 
 	void VulkanContext::createInstance()
@@ -243,23 +252,11 @@ namespace Renderer
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures;
 		extendedDynamicStateFeatures.extendedDynamicState = vk::True;
 
-		vk::PhysicalDeviceVulkan11Features vulkan11Features;
-		vulkan11Features.setShaderDrawParameters(vk::True);
-
-		vk::PhysicalDeviceVulkan12Features vulkan12Features;
-
-		vk::PhysicalDeviceVulkan13Features vulkan13Features;
-		vulkan13Features.setDynamicRendering(vk::True);
-		vulkan13Features.setSynchronization2(vk::True);
-
-		vulkan11Features.setPNext(extendedDynamicStateFeatures);
-		vulkan12Features.setPNext(vulkan11Features);
-		vulkan13Features.setPNext(vulkan12Features);
-		features.setPNext(vulkan13Features);
+		features.setPNext(extendedDynamicStateFeatures);
 
 		constexpr float queuePriority = 0.0f;
 
-		vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
+		const vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
 			{},
 			_graphics_family_index, 1, &queuePriority
 		);
@@ -352,19 +349,19 @@ namespace Renderer
 		}
 
 		const vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, _surface,
-		                                               imageCount,
-		                                               swapChainSurfaceFormat.format,
-		                                               swapChainSurfaceFormat.colorSpace, _swapChainExtent,
-		                                               IMAGE_ARRAY_LAYERS,
-		                                               vk::ImageUsageFlagBits::eColorAttachment,
-		                                               vk::SharingMode::eExclusive, queueFamilyIndexCount,
-		                                               queueFamilyIndices.data(),
-		                                               surfaceCapabilities.currentTransform,
-		                                               vk::CompositeAlphaFlagBitsKHR::eOpaque,
-		                                               chooseSwapPresentMode(
-			                                               _physical_device.getSurfacePresentModesKHR(_surface)),
-		                                               VK_TRUE,
-		                                               VK_NULL_HANDLE);
+		                                                     imageCount,
+		                                                     swapChainSurfaceFormat.format,
+		                                                     swapChainSurfaceFormat.colorSpace, _swapChainExtent,
+		                                                     IMAGE_ARRAY_LAYERS,
+		                                                     vk::ImageUsageFlagBits::eColorAttachment,
+		                                                     vk::SharingMode::eExclusive, queueFamilyIndexCount,
+		                                                     queueFamilyIndices.data(),
+		                                                     surfaceCapabilities.currentTransform,
+		                                                     vk::CompositeAlphaFlagBitsKHR::eOpaque,
+		                                                     chooseSwapPresentMode(
+			                                                     _physical_device.getSurfacePresentModesKHR(_surface)),
+		                                                     VK_TRUE,
+		                                                     VK_NULL_HANDLE);
 
 		_swapChain = vk::raii::SwapchainKHR(_device, swapchainCreateInfo);
 		swapChainImages = _swapChain.getImages();
