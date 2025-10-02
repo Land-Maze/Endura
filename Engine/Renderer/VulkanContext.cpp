@@ -514,6 +514,11 @@ namespace Renderer
 
 	void VulkanContext::createCommandPool()
 	{
+		const vk::CommandPoolCreateInfo commandPoolInfo(
+			vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			_graphics_family_index
+		);
+		_commandPool = vk::raii::CommandPool(_device, commandPoolInfo);
 	}
 
 	void VulkanContext::createCommandBuffer()

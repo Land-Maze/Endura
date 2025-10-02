@@ -71,6 +71,8 @@ namespace Renderer
         vk::raii::PipelineLayout _pipelineLayout = VK_NULL_HANDLE;
         vk::raii::Pipeline _graphicsPipeline = VK_NULL_HANDLE;
 
+        vk::raii::CommandPool _commandPool = VK_NULL_HANDLE;
+
         /**
          * Creates Vulkan instance
          */
