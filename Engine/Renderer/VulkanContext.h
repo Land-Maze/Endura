@@ -185,6 +185,11 @@ namespace Renderer
         void createSyncObjects();
 
         /**
+         * Records a command buffer (it will be deleted after making decisions)
+         */
+        void recordCommandBuffer(uint32_t imageIndex) const;
+
+        /**
          *
          */
         void transition_image_layout(

@@ -382,7 +382,7 @@ namespace Renderer
 		                                                     VK_NULL_HANDLE);
 
 		_swapChain = vk::raii::SwapchainKHR(_device, swapchainCreateInfo);
-		swapChainImages = _swapChain.getImages();
+		_swapChainImages = _swapChain.getImages();
 	}
 
 	void VulkanContext::createImageViews()
@@ -544,6 +544,80 @@ namespace Renderer
 		_drawFence = vk::raii::Fence(_device, fenceInfo);
 	}
 
+	void VulkanContext::recordCommandBuffer(const uint32_t imageIndex) const
+	{
+		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo({}, {});
+		_commandBuffer.begin(commandBufferBeginInfo);
+
+		transition_image_layout(
+			imageIndex,
+			vk::ImageLayout::eUndefined,
+			vk::ImageLayout::eColorAttachmentOptimal,
+			{},
+			vk::AccessFlagBits2::eColorAttachmentWrite,
+			vk::PipelineStageFlagBits2::eTopOfPipe,
+			vk::PipelineStageFlagBits2::eColorAttachmentOutput
+		);
+
+		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+
+		const vk::RenderingAttachmentInfo attachmentInfo(
+			_swapChainImageViews[imageIndex],
+			vk::ImageLayout::eColorAttachmentOptimal,
+			{},
+			{},
+			{},
+			vk::AttachmentLoadOp::eClear,
+			vk::AttachmentStoreOp::eStore,
+			clearColor
+		);
+
+		const vk::Rect2D renderArea({0, 0}, _swapChainExtent);
+
+		const vk::RenderingInfo renderingInfo(
+			{},
+			renderArea,
+			1,
+			{},
+			1,
+			&attachmentInfo
+		);
+
+		const vk::Viewport viewport(
+			0.0f,
+			0.0f,
+			static_cast<float>(_swapChainExtent.width),
+			static_cast<float>(_swapChainExtent.height),
+			0.0f,
+			1.0f
+		);
+
+		const vk::Rect2D scissors(
+			vk::Offset2D(0, 0),
+			_swapChainExtent
+		);
+
+		_commandBuffer.beginRendering(renderingInfo);
+		_commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+		_commandBuffer.setViewport(0, viewport);
+		_commandBuffer.setScissor(0, scissors);
+
+		_commandBuffer.draw(3, 1, 0, 0);
+
+		_commandBuffer.endRendering();
+
+		transition_image_layout(
+			imageIndex,
+			vk::ImageLayout::eColorAttachmentOptimal,
+			vk::ImageLayout::ePresentSrcKHR,
+			vk::AccessFlagBits2::eColorAttachmentWrite,
+			{},
+			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+			vk::PipelineStageFlagBits2::eBottomOfPipe
+		);
+
+		_commandBuffer.end();
+	}
 	void VulkanContext::transition_image_layout(const uint32_t imageIndex, const vk::ImageLayout oldLayout,
 	                                            const vk::ImageLayout newLayout, const vk::AccessFlags2 srcAccessMask,
 	                                            const vk::AccessFlags2 dstAccessMask,
