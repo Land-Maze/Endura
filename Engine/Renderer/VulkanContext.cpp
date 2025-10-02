@@ -32,6 +32,13 @@ namespace Renderer
 		createSyncObjects();
 	}
 
+	void VulkanContext::Cleanup()
+	{
+		_swapChainImageViews.clear();
+		_swapChain = VK_NULL_HANDLE;
+	}
+
+
 	void VulkanContext::createInstance()
 	{
 		constexpr vk::ApplicationInfo application_info(

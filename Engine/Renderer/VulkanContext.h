@@ -43,6 +43,16 @@ namespace Renderer
          */
         void InitializeVulkan(GLFWwindow* window);
 
+        /**
+         * Cleans every resource that requires manual destruction for successful exit
+         */
+        void Cleanup();
+
+        /**
+         * Draws a frame (it will be deleted after making decisions)
+         */
+        void drawFrame();
+
     private:
         vk::raii::Context _context;
         vk::raii::Instance _instance = VK_NULL_HANDLE;
