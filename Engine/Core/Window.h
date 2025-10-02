@@ -74,7 +74,7 @@ namespace Core
          *
          * @param value True to request the window to close, false to keep it open.
          */
-        void setShouldClose(bool value);
+        void setShouldClose(bool value) const;
 
         /**
          * Destroys the window and releases resources related to it.

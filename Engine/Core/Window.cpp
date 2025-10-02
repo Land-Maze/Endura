@@ -87,7 +87,7 @@ namespace Core
         return glfwWindowShouldClose(_window.get());
     }
 
-    void Window::setShouldClose(const bool value)
+    void Window::setShouldClose(const bool value) const
     {
         if (!_window) return;
 

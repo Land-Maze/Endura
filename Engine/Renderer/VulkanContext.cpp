@@ -333,7 +333,7 @@ namespace Renderer
 		return {
 			std::clamp<uint32_t>(width, surface_capabilities.minImageExtent.width,
 			                     surface_capabilities.maxImageExtent.width),
-			std::clamp<uint32_t>(width, surface_capabilities.minImageExtent.height,
+			std::clamp<uint32_t>(height, surface_capabilities.minImageExtent.height,
 			                     surface_capabilities.maxImageExtent.height)
 		};
 	}
@@ -357,7 +357,7 @@ namespace Renderer
 				? surfaceCapabilities.maxImageCount
 				: minImageCount);
 
-		std::vector<uint32_t> queueFamilyIndices = {_graphics_family_index, _present_family_index};
+		const std::vector<uint32_t> queueFamilyIndices = {_graphics_family_index, _present_family_index};
 
 		uint32_t queueFamilyIndexCount;
 		vk::SharingMode imageSharingMode;
@@ -370,23 +370,28 @@ namespace Renderer
 		else
 		{
 			queueFamilyIndexCount = queueFamilyIndices.size();
-			imageSharingMode = vk::SharingMode::eExclusive;
+			imageSharingMode = vk::SharingMode::eConcurrent;
 		}
 
-		const vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, _surface,
-		                                                     imageCount,
-		                                                     swapChainSurfaceFormat.format,
-		                                                     swapChainSurfaceFormat.colorSpace, _swapChainExtent,
-		                                                     IMAGE_ARRAY_LAYERS,
-		                                                     vk::ImageUsageFlagBits::eColorAttachment,
-		                                                     vk::SharingMode::eExclusive, queueFamilyIndexCount,
-		                                                     queueFamilyIndices.data(),
-		                                                     surfaceCapabilities.currentTransform,
-		                                                     vk::CompositeAlphaFlagBitsKHR::eOpaque,
-		                                                     chooseSwapPresentMode(
-			                                                     _physical_device.getSurfacePresentModesKHR(_surface)),
-		                                                     VK_TRUE,
-		                                                     VK_NULL_HANDLE);
+		const vk::SwapchainCreateInfoKHR swapchainCreateInfo(
+			{},
+			_surface,
+			imageCount,
+			swapChainSurfaceFormat.format,
+			swapChainSurfaceFormat.colorSpace,
+			_swapChainExtent,
+			IMAGE_ARRAY_LAYERS,
+			vk::ImageUsageFlagBits::eColorAttachment,
+			imageSharingMode,
+			queueFamilyIndexCount,
+			queueFamilyIndices.data(),
+			surfaceCapabilities.currentTransform,
+			vk::CompositeAlphaFlagBitsKHR::eOpaque,
+			chooseSwapPresentMode(
+				_physical_device.getSurfacePresentModesKHR(_surface)),
+			VK_TRUE,
+			VK_NULL_HANDLE
+		);
 
 		_swapChain = vk::raii::SwapchainKHR(_device, swapchainCreateInfo);
 		_swapChainImages = _swapChain.getImages();
@@ -394,14 +399,14 @@ namespace Renderer
 
 	void VulkanContext::createImageViews()
 	{
-		swapChainImages.clear();
-		swapChainImageViews.reserve(swapChainImages.size());
+		_swapChainImages.clear();
+		_swapChainImageViews.reserve(_swapChainImages.size());
 
-		for (const auto image : swapChainImages)
+		for (const auto image : _swapChainImages)
 		{
-			vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, swapChainImageFormat, {},
+			vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, _swapChainImageFormat, {},
 			                                            {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-			swapChainImageViews.emplace_back(_device, imageViewCreateInfo);
+			_swapChainImageViews.emplace_back(_device, imageViewCreateInfo);
 		}
 	}
 
@@ -492,7 +497,7 @@ namespace Renderer
 		vk::PipelineRenderingCreateInfo pipelineRenderingInfo(
 			{},
 			1,
-			&swapChainImageFormat
+			&_swapChainImageFormat
 		);
 
 		vk::GraphicsPipelineCreateInfo pipelineInfo(

@@ -792,6 +792,7 @@
 // }
 
 
+#include <iostream>
 #include <Core/Window.h>
 #include <Renderer/VulkanContext.h>
 
@@ -801,4 +802,18 @@ int main() {
     window.create({});
     vkContext.InitializeVulkan(window.getGLFWWindow());
 
+    while (true)
+    {
+        std::printf("shouldClose():%hhd\n", window.shouldClose());
+        while (!window.shouldClose())
+        {
+            window.pollEvents();
+            vkContext.drawFrame();
+            std::printf("after");
+        }
+        // We can have the exit logic here
+        break;
+    }
+
+    vkContext.Cleanup();
 }
