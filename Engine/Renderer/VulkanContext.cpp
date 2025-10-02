@@ -543,4 +543,32 @@ namespace Renderer
 		);
 		_drawFence = vk::raii::Fence(_device, fenceInfo);
 	}
+
+	void VulkanContext::transition_image_layout(const uint32_t imageIndex, const vk::ImageLayout oldLayout,
+	                                            const vk::ImageLayout newLayout, const vk::AccessFlags2 srcAccessMask,
+	                                            const vk::AccessFlags2 dstAccessMask,
+	                                            const vk::PipelineStageFlags2 srcStageMask,
+	                                            const vk::PipelineStageFlags2 dstStageMask) const
+	{
+		constexpr vk::ImageSubresourceRange subresourceRange(
+			vk::ImageAspectFlagBits::eColor,
+			0,
+			1,
+			0,
+			1
+		);
+
+		vk::ImageMemoryBarrier2 imageMemoryBarrier(
+			srcStageMask,
+			srcAccessMask,
+			dstStageMask,
+			dstAccessMask,
+			oldLayout,
+			newLayout,
+			VK_QUEUE_FAMILY_IGNORED,
+			VK_QUEUE_FAMILY_IGNORED,
+			_swapChainImages[imageIndex],
+			subresourceRange
+		);
+	}
 }

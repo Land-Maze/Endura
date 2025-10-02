@@ -64,9 +64,9 @@ namespace Renderer
 
         vk::raii::SwapchainKHR _swapChain = VK_NULL_HANDLE;
         vk::Extent2D _swapChainExtent;
-        std::vector<vk::Image> swapChainImages;
-        std::vector<vk::raii::ImageView> swapChainImageViews;
-        vk::Format swapChainImageFormat = vk::Format::eUndefined;
+        std::vector<vk::Image> _swapChainImages;
+        std::vector<vk::raii::ImageView> _swapChainImageViews;
+        vk::Format _swapChainImageFormat = vk::Format::eUndefined;
 
         vk::raii::PipelineLayout _pipelineLayout = VK_NULL_HANDLE;
         vk::raii::Pipeline _graphicsPipeline = VK_NULL_HANDLE;
@@ -183,5 +183,18 @@ namespace Renderer
          * Creates sync objects such as: semaphores, and fences (only for now)
          */
         void createSyncObjects();
+
+        /**
+         *
+         */
+        void transition_image_layout(
+        const uint32_t imageIndex,
+        const vk::ImageLayout oldLayout,
+		const vk::ImageLayout newLayout,
+		const vk::AccessFlags2 srcAccessMask,
+		const vk::AccessFlags2 dstAccessMask,
+		const vk::PipelineStageFlags2 srcStageMask,
+		const vk::PipelineStageFlags2 dstStageMask
+        ) const;
     };
 }
