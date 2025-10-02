@@ -400,6 +400,116 @@ namespace Renderer
 
 	void VulkanContext::createGraphicsPipeline()
 	{
+		auto shaderSpirV = Assets::AssetManager::load<Assets::AssetType::Shader>("shader")->spirV;
+
+		auto vertShader = Shader(_device, vk::ShaderStageFlagBits::eVertex, "vertMain", shaderSpirV);
+		auto fragShader = Shader(_device, vk::ShaderStageFlagBits::eFragment, "fragMain", shaderSpirV);
+
+		const vk::PipelineShaderStageCreateInfo vertShaderStageInfo = vertShader.getStageInfo();
+		const vk::PipelineShaderStageCreateInfo fragShaderStageInfo = fragShader.getStageInfo();
+
+		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo(
+			{},
+			vk::PrimitiveTopology::eTriangleList
+		);
+
+		const std::vector dynamicStates = {
+			vk::DynamicState::eViewport,
+			vk::DynamicState::eScissor
+		};
+
+		vk::PipelineViewportStateCreateInfo viewportStateInfo(
+			{},
+			1,
+			{},
+			1,
+			{}
+		);
+
+		vk::PipelineDynamicStateCreateInfo pipelineDynamicStateInfo(
+			{},
+			dynamicStates.size(),
+			dynamicStates.data()
+		);
+
+		vk::PipelineRasterizationStateCreateInfo rasterizationStateInfo(
+			{},
+			vk::False,
+			vk::False,
+			vk::PolygonMode::eFill,
+			vk::CullModeFlagBits::eBack,
+			vk::FrontFace::eClockwise,
+			vk::False,
+			{},
+			{},
+			1.0f,
+			1.0f);
+
+		vk::PipelineColorBlendAttachmentState colorBlendAttachmentState(
+			vk::True,
+			vk::BlendFactor::eSrcAlpha,
+			vk::BlendFactor::eOneMinusSrcAlpha,
+			vk::BlendOp::eAdd,
+			vk::BlendFactor::eOne,
+			vk::BlendFactor::eZero,
+			vk::BlendOp::eAdd
+		);
+
+		vk::PipelineColorBlendStateCreateInfo colorBlendingInfo(
+			{},
+			vk::False,
+			vk::LogicOp::eCopy,
+			1,
+			&colorBlendAttachmentState
+		);
+
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
+			{},
+			0,
+			{},
+			0
+		);
+
+		_pipelineLayout = vk::raii::PipelineLayout(_device, pipelineLayoutInfo);
+
+		vk::PipelineMultisampleStateCreateInfo pipelineMultisampleStateInfo(
+			{},
+			vk::SampleCountFlagBits::e1,
+			vk::True
+		);
+
+		vk::PipelineRenderingCreateInfo pipelineRenderingInfo(
+			{},
+			1,
+			&swapChainImageFormat
+		);
+
+		vk::GraphicsPipelineCreateInfo pipelineInfo(
+			{},
+			2,
+			shaderStages,
+			&vertexInputInfo,
+			&inputAssemblyInfo,
+			{},
+			&viewportStateInfo,
+			&rasterizationStateInfo,
+			&pipelineMultisampleStateInfo,
+			{},
+			&colorBlendingInfo,
+			&pipelineDynamicStateInfo,
+			_pipelineLayout,
+			VK_NULL_HANDLE,
+			{},
+			VK_NULL_HANDLE,
+			-1,
+			&pipelineRenderingInfo
+		);
+
+		_graphicsPipeline = vk::raii::Pipeline(_device, VK_NULL_HANDLE, pipelineInfo);
 	}
 
 	void VulkanContext::createCommandPool()

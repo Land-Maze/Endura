@@ -68,6 +68,9 @@ namespace Renderer
         std::vector<vk::raii::ImageView> swapChainImageViews;
         vk::Format swapChainImageFormat = vk::Format::eUndefined;
 
+        vk::raii::PipelineLayout _pipelineLayout = VK_NULL_HANDLE;
+        vk::raii::Pipeline _graphicsPipeline = VK_NULL_HANDLE;
+
         /**
          * Creates Vulkan instance
          */
