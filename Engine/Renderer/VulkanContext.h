@@ -74,6 +74,10 @@ namespace Renderer
         vk::raii::CommandPool _commandPool = VK_NULL_HANDLE;
         vk::raii::CommandBuffer _commandBuffer = VK_NULL_HANDLE;
 
+        vk::raii::Semaphore _presentCompleteSemaphore = VK_NULL_HANDLE;
+        vk::raii::Semaphore _renderFinishedSemaphore = VK_NULL_HANDLE;
+        vk::raii::Fence _drawFence = VK_NULL_HANDLE;
+
         /**
          * Creates Vulkan instance
          */

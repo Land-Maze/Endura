@@ -534,5 +534,13 @@ namespace Renderer
 
 	void VulkanContext::createSyncObjects()
 	{
+		_presentCompleteSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
+		_renderFinishedSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
+
+		// FIXME: This should be a Timeline Semaphore
+		constexpr vk::FenceCreateInfo fenceInfo(
+			vk::FenceCreateFlagBits::eSignaled
+		);
+		_drawFence = vk::raii::Fence(_device, fenceInfo);
 	}
 }
