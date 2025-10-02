@@ -248,24 +248,42 @@ namespace Renderer
 	void VulkanContext::createLogicalDevice()
 	{
 		auto features = _physical_device.getFeatures2();
+		features.features.sampleRateShading = vk::True;
 
 		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures;
 		extendedDynamicStateFeatures.extendedDynamicState = vk::True;
 
-		features.setPNext(extendedDynamicStateFeatures);
+		vk::PhysicalDeviceVulkan11Features deviceVulkan11Features;
+		deviceVulkan11Features.pNext = extendedDynamicStateFeatures;
+		deviceVulkan11Features.shaderDrawParameters = vk::True;
+
+
+		vk::PhysicalDeviceVulkan13Features deviceVulkan13Features;
+		deviceVulkan13Features.dynamicRendering = vk::True;
+
+		deviceVulkan13Features.pNext = deviceVulkan11Features;
+
+		features.setPNext(deviceVulkan13Features);
 
 		constexpr float queuePriority = 0.0f;
 
 		const vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
 			{},
-			_graphics_family_index, 1, &queuePriority
+			_graphics_family_index,
+			1,
+			&queuePriority
 		);
 
 		vk::DeviceCreateInfo deviceCreateInfo(
-			{}, 1,
-			&deviceQueueCreateInfo, static_cast<uint32_t>(validationLayers.size()),
-			validationLayers.data(), static_cast<uint32_t>(deviceExtensions.size()),
-			deviceExtensions.data()
+			{},
+			1,
+			&deviceQueueCreateInfo,
+			static_cast<uint32_t>(validationLayers.size()),
+			validationLayers.data(),
+			static_cast<uint32_t>(deviceExtensions.size()),
+			deviceExtensions.data(),
+			{},
+			features
 		);
 
 		_device = vk::raii::Device(_physical_device, deviceCreateInfo);
