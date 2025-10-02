@@ -625,6 +625,58 @@ namespace Renderer
 
 		_commandBuffer.end();
 	}
+
+	void VulkanContext::drawFrame()
+	{
+		_graphics_queue.waitIdle();
+
+		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphore, VK_NULL_HANDLE);
+
+		if (result == vk::Result::eErrorOutOfDateKHR)
+		{
+			// FIXME: Recreate the swapchain here
+			return;
+		}
+
+		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+			throw std::runtime_error(
+				"Failed to accquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
+
+		std::cout << "imageIndex=" << imageIndex
+			<< " swapChainImages.size()=" << _swapChainImages.size() << std::endl;
+
+		recordCommandBuffer(imageIndex);
+		_device.resetFences(*_drawFence);
+
+		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+
+		const vk::SubmitInfo submitInfo(
+			1,
+			&*_presentCompleteSemaphore,
+			&waitDestinationStageMask,
+			1,
+			&*_commandBuffer,
+			1,
+			&*_renderFinishedSemaphore
+		);
+
+		_graphics_queue.submit(submitInfo, *_drawFence);
+
+		while (vk::Result::eTimeout == _device.waitForFences(*_drawFence, vk::True, UINT64_MAX))
+		{
+		}
+
+		const vk::PresentInfoKHR presentInfo(
+			1,
+			&*_renderFinishedSemaphore,
+			1,
+			&*_swapChain,
+			&imageIndex
+		);
+
+		result = _present_queue.presentKHR(presentInfo);
+	}
+
 	void VulkanContext::transition_image_layout(const uint32_t imageIndex, const vk::ImageLayout oldLayout,
 	                                            const vk::ImageLayout newLayout, const vk::AccessFlags2 srcAccessMask,
 	                                            const vk::AccessFlags2 dstAccessMask,
