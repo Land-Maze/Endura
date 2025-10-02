@@ -523,6 +523,13 @@ namespace Renderer
 
 	void VulkanContext::createCommandBuffer()
 	{
+		const vk::CommandBufferAllocateInfo allocateInfo(
+			_commandPool,
+			vk::CommandBufferLevel::ePrimary,
+			1
+		);
+
+		_commandBuffer = std::move(vk::raii::CommandBuffers(_device, allocateInfo).front());
 	}
 
 	void VulkanContext::createSyncObjects()
