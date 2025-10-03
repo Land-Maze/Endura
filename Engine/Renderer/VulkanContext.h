@@ -51,7 +51,7 @@ namespace Renderer
         /**
          * Draws a frame (it will be deleted after making decisions)
          */
-        void drawFrame();
+        void drawFrame() const;
 
     private:
         vk::raii::Context _context;

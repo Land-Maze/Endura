@@ -804,12 +804,10 @@ int main() {
 
     while (true)
     {
-        std::printf("shouldClose():%hhd\n", window.shouldClose());
         while (!window.shouldClose())
         {
             window.pollEvents();
             vkContext.drawFrame();
-            std::printf("after");
         }
         // We can have the exit logic here
         break;

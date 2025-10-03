@@ -34,6 +34,8 @@ namespace Renderer
 
 	void VulkanContext::Cleanup()
 	{
+		_device.waitIdle();
+
 		_swapChainImageViews.clear();
 		_swapChain = VK_NULL_HANDLE;
 	}
@@ -267,6 +269,7 @@ namespace Renderer
 
 		vk::PhysicalDeviceVulkan13Features deviceVulkan13Features;
 		deviceVulkan13Features.dynamicRendering = vk::True;
+		deviceVulkan13Features.synchronization2 = vk::True;
 
 		deviceVulkan13Features.pNext = deviceVulkan11Features;
 
@@ -360,11 +363,13 @@ namespace Renderer
 		const std::vector<uint32_t> queueFamilyIndices = {_graphics_family_index, _present_family_index};
 
 		uint32_t queueFamilyIndexCount;
+		auto queueIndices = queueFamilyIndices.data();
 		vk::SharingMode imageSharingMode;
 
 		if (_graphics_family_index == _present_family_index)
 		{
 			queueFamilyIndexCount = 0;
+			queueIndices = nullptr;
 			imageSharingMode = vk::SharingMode::eExclusive;
 		}
 		else
@@ -372,6 +377,8 @@ namespace Renderer
 			queueFamilyIndexCount = queueFamilyIndices.size();
 			imageSharingMode = vk::SharingMode::eConcurrent;
 		}
+
+		_swapChainImageFormat = swapChainSurfaceFormat.format;
 
 		const vk::SwapchainCreateInfoKHR swapchainCreateInfo(
 			{},
@@ -384,7 +391,7 @@ namespace Renderer
 			vk::ImageUsageFlagBits::eColorAttachment,
 			imageSharingMode,
 			queueFamilyIndexCount,
-			queueFamilyIndices.data(),
+			queueIndices,
 			surfaceCapabilities.currentTransform,
 			vk::CompositeAlphaFlagBitsKHR::eOpaque,
 			chooseSwapPresentMode(
@@ -399,13 +406,28 @@ namespace Renderer
 
 	void VulkanContext::createImageViews()
 	{
-		_swapChainImages.clear();
+		_swapChainImageViews.clear();
 		_swapChainImageViews.reserve(_swapChainImages.size());
+
+		constexpr vk::ImageSubresourceRange subresourceRange(
+			vk::ImageAspectFlagBits::eColor,
+			0,
+			1,
+			0,
+			1
+		);
 
 		for (const auto image : _swapChainImages)
 		{
-			vk::ImageViewCreateInfo imageViewCreateInfo({}, image, vk::ImageViewType::e2D, _swapChainImageFormat, {},
-			                                            {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+			vk::ImageViewCreateInfo imageViewCreateInfo(
+				{},
+				image,
+				vk::ImageViewType::e2D,
+				_swapChainImageFormat,
+				{},
+				subresourceRange
+			);
+
 			_swapChainImageViews.emplace_back(_device, imageViewCreateInfo);
 		}
 	}
@@ -631,7 +653,7 @@ namespace Renderer
 		_commandBuffer.end();
 	}
 
-	void VulkanContext::drawFrame()
+	void VulkanContext::drawFrame() const
 	{
 		_graphics_queue.waitIdle();
 
@@ -645,15 +667,12 @@ namespace Renderer
 
 		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 			throw std::runtime_error(
-				"Failed to accquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
-
-		std::cout << "imageIndex=" << imageIndex
-			<< " swapChainImages.size()=" << _swapChainImages.size() << std::endl;
+				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
 
 		recordCommandBuffer(imageIndex);
 		_device.resetFences(*_drawFence);
 
-		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		constexpr vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 		const vk::SubmitInfo submitInfo(
 			1,
@@ -708,5 +727,16 @@ namespace Renderer
 			_swapChainImages[imageIndex],
 			subresourceRange
 		);
+
+		vk::DependencyInfo dependencyInfo(
+			{},
+			{},
+			{},
+			{},
+			{},
+			1,
+			&imageMemoryBarrier
+		);
+		_commandBuffer.pipelineBarrier2(dependencyInfo);
 	}
 }
