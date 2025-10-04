@@ -673,8 +673,10 @@ namespace Renderer
 
 		if (result == vk::Result::eErrorOutOfDateKHR)
 		{
+			recreateSwapChain();
 			return;
 		}
+
 
 		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 			throw std::runtime_error(
@@ -694,18 +696,14 @@ namespace Renderer
 			1,
 			&*_commandBuffers[_currentFrame],
 			1,
-			&*_renderFinishedSemaphores[_semaphoreIndex]
+			&*_renderFinishedSemaphores[imageIndex]
 		);
 
 		_graphics_queue.submit(submitInfo, *_inFlightFences[_currentFrame]);
 
-		while (vk::Result::eTimeout == _device.waitForFences(*_inFlightFences[_currentFrame], vk::True, UINT64_MAX))
-		{
-		}
-
 		const vk::PresentInfoKHR presentInfo(
 			1,
-			&*_renderFinishedSemaphores[_semaphoreIndex],
+			&*_renderFinishedSemaphores[imageIndex],
 			1,
 			&*_swapChain,
 			&imageIndex

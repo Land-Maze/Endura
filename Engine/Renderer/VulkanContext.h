@@ -26,8 +26,7 @@ inline std::vector deviceExtensions = {
     vk::KHRSynchronization2ExtensionName,
     vk::KHRCreateRenderpass2ExtensionName,
     vk::KHRShaderDrawParametersExtensionName,
-    vk::KHRDynamicRenderingExtensionName,
-    vk::KHRSynchronization2ExtensionName
+    vk::KHRDynamicRenderingExtensionName
 };
 
 namespace Renderer
