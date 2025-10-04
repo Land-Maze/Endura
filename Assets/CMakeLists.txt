@@ -18,6 +18,7 @@ file(MAKE_DIRECTORY ${SHADER_BUILD_DIR})
 file(GLOB SHADER_FILES CONFIGURE_DEPENDS "${SHADER_SRC_DIR}/*.slang")
 
 set(SPIRV_OUTPUTS "")
+set (ENTRY_POINTS -entry vertMain -entry fragMain)
 foreach(SRC ${SHADER_FILES})
     get_filename_component(NAME_WE ${SRC} NAME_WE)
     set(OUTPUT ${SHADER_BUILD_DIR}/${NAME_WE}.spv)
@@ -30,6 +31,7 @@ foreach(SRC ${SHADER_FILES})
             -profile spirv_1_4
             -emit-spirv-directly
             -fvk-use-entrypoint-name
+            ${ENTRY_POINTS}
             -o ${OUTPUT}
             DEPENDS ${SRC}
             COMMENT "Compiling shader ${NAME_WE}"
