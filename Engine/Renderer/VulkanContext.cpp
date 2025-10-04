@@ -490,7 +490,11 @@ namespace Renderer
 			vk::BlendOp::eAdd,
 			vk::BlendFactor::eOne,
 			vk::BlendFactor::eZero,
-			vk::BlendOp::eAdd
+			vk::BlendOp::eAdd,
+			vk::ColorComponentFlagBits::eR |
+					   vk::ColorComponentFlagBits::eG |
+					   vk::ColorComponentFlagBits::eB |
+					   vk::ColorComponentFlagBits::eA
 		);
 
 		vk::PipelineColorBlendStateCreateInfo colorBlendingInfo(
@@ -593,7 +597,7 @@ namespace Renderer
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput
 		);
 
-		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.1f, 0.3f, 0.1f, 1.0f);
 
 		const vk::RenderingAttachmentInfo attachmentInfo(
 			_swapChainImageViews[imageIndex],
@@ -636,7 +640,7 @@ namespace Renderer
 		_commandBuffer.setViewport(0, viewport);
 		_commandBuffer.setScissor(0, scissors);
 
-		_commandBuffer.draw(3, 1, 0, 0);
+		_commandBuffer.draw(6, 1, 0, 0);
 
 		_commandBuffer.endRendering();
 
