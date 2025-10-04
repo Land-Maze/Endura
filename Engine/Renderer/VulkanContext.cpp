@@ -564,28 +564,34 @@ namespace Renderer
 		const vk::CommandBufferAllocateInfo allocateInfo(
 			_commandPool,
 			vk::CommandBufferLevel::ePrimary,
-			1
+			MAX_FRAMES_IN_FLIGHT
 		);
 
-		_commandBuffer = std::move(vk::raii::CommandBuffers(_device, allocateInfo).front());
+		_commandBuffers = vk::raii::CommandBuffers(_device, allocateInfo);
 	}
 
 	void VulkanContext::createSyncObjects()
 	{
-		_presentCompleteSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-		_renderFinishedSemaphore = vk::raii::Semaphore(_device, vk::SemaphoreCreateInfo());
-
+		_presentCompleteSemaphores.clear();
+		_renderFinishedSemaphores.clear();
 		// FIXME: This should be a Timeline Semaphore
-		constexpr vk::FenceCreateInfo fenceInfo(
-			vk::FenceCreateFlagBits::eSignaled
-		);
-		_drawFence = vk::raii::Fence(_device, fenceInfo);
+		_inFlightFences.clear();
+
+		for (size_t i = 0; i < _swapChainImages.size(); i++) {
+			_presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+			_renderFinishedSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+		}
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			_inFlightFences.emplace_back(_device, vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
+		}
 	}
 
-	void VulkanContext::recordCommandBuffer(const uint32_t imageIndex) const
+	void VulkanContext::recordCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t imageIndex) const
 	{
 		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo({}, {});
-		_commandBuffer.begin(commandBufferBeginInfo);
+		commandBuffer.begin(commandBufferBeginInfo);
 
 		transition_image_layout(
 			imageIndex,
@@ -635,14 +641,14 @@ namespace Renderer
 			_swapChainExtent
 		);
 
-		_commandBuffer.beginRendering(renderingInfo);
-		_commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
-		_commandBuffer.setViewport(0, viewport);
-		_commandBuffer.setScissor(0, scissors);
+		commandBuffer.beginRendering(renderingInfo);
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+		commandBuffer.setViewport(0, viewport);
+		commandBuffer.setScissor(0, scissors);
 
-		_commandBuffer.draw(6, 1, 0, 0);
+		commandBuffer.draw(6, 1, 0, 0);
 
-		_commandBuffer.endRendering();
+		commandBuffer.endRendering();
 
 		transition_image_layout(
 			imageIndex,
@@ -654,14 +660,15 @@ namespace Renderer
 			vk::PipelineStageFlagBits2::eBottomOfPipe
 		);
 
-		_commandBuffer.end();
+		commandBuffer.end();
 	}
 
-	void VulkanContext::drawFrame() const
+	void VulkanContext::drawFrame()
 	{
-		_graphics_queue.waitIdle();
+		while ( vk::Result::eTimeout == _device.waitForFences( *_inFlightFences[_currentFrame], vk::True, UINT64_MAX ) ){}
 
-		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphore, VK_NULL_HANDLE);
+		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphores[_semaphoreIndex], VK_NULL_HANDLE);
+		_device.resetFences(*_inFlightFences[_currentFrame]);
 
 		if (result == vk::Result::eErrorOutOfDateKHR)
 		{
@@ -673,36 +680,39 @@ namespace Renderer
 			throw std::runtime_error(
 				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
 
-		recordCommandBuffer(imageIndex);
-		_device.resetFences(*_drawFence);
+		_commandBuffers[_currentFrame].reset();
+		recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
 
 		constexpr vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 		const vk::SubmitInfo submitInfo(
 			1,
-			&*_presentCompleteSemaphore,
+			&*_presentCompleteSemaphores[_semaphoreIndex],
 			&waitDestinationStageMask,
 			1,
-			&*_commandBuffer,
+			&*_commandBuffers[_currentFrame],
 			1,
-			&*_renderFinishedSemaphore
+			&*_renderFinishedSemaphores[imageIndex]
 		);
 
-		_graphics_queue.submit(submitInfo, *_drawFence);
+		_graphics_queue.submit(submitInfo, *_inFlightFences[_currentFrame]);
 
-		while (vk::Result::eTimeout == _device.waitForFences(*_drawFence, vk::True, UINT64_MAX))
+		while (vk::Result::eTimeout == _device.waitForFences(*_inFlightFences[_currentFrame], vk::True, UINT64_MAX))
 		{
 		}
 
 		const vk::PresentInfoKHR presentInfo(
 			1,
-			&*_renderFinishedSemaphore,
+			&*_renderFinishedSemaphores[_semaphoreIndex],
 			1,
 			&*_swapChain,
 			&imageIndex
 		);
 
 		result = _present_queue.presentKHR(presentInfo);
+
+		_semaphoreIndex = (_semaphoreIndex + 1) % _presentCompleteSemaphores.size();
+		_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 	void VulkanContext::transition_image_layout(const uint32_t imageIndex, const vk::ImageLayout oldLayout,
@@ -741,6 +751,6 @@ namespace Renderer
 			1,
 			&imageMemoryBarrier
 		);
-		_commandBuffer.pipelineBarrier2(dependencyInfo);
+		_commandBuffers[_currentFrame].pipelineBarrier2(dependencyInfo);
 	}
 }

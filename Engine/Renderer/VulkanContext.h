@@ -11,7 +11,7 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+constexpr int MAX_FRAMES_IN_FLIGHT = 1;
 
 constexpr int IMAGE_ARRAY_LAYERS = 1;
 
@@ -51,7 +51,7 @@ namespace Renderer
         /**
          * Draws a frame (it will be deleted after making decisions)
          */
-        void drawFrame() const;
+        void drawFrame();
 
     private:
         vk::raii::Context _context;
@@ -82,11 +82,14 @@ namespace Renderer
         vk::raii::Pipeline _graphicsPipeline = VK_NULL_HANDLE;
 
         vk::raii::CommandPool _commandPool = VK_NULL_HANDLE;
-        vk::raii::CommandBuffer _commandBuffer = VK_NULL_HANDLE;
+        std::vector<vk::raii::CommandBuffer> _commandBuffers;
 
-        vk::raii::Semaphore _presentCompleteSemaphore = VK_NULL_HANDLE;
-        vk::raii::Semaphore _renderFinishedSemaphore = VK_NULL_HANDLE;
-        vk::raii::Fence _drawFence = VK_NULL_HANDLE;
+        std::vector<vk::raii::Semaphore> _presentCompleteSemaphores;
+        std::vector<vk::raii::Semaphore> _renderFinishedSemaphores;
+        std::vector<vk::raii::Fence> _inFlightFences;
+
+        uint32_t _currentFrame = 0;
+        uint32_t _semaphoreIndex = 0;
 
         /**
          * Creates Vulkan instance
@@ -197,7 +200,7 @@ namespace Renderer
         /**
          * Records a command buffer (it will be deleted after making decisions)
          */
-        void recordCommandBuffer(uint32_t imageIndex) const;
+        void recordCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, uint32_t imageIndex) const;
 
         /**
          *
