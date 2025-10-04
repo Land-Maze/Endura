@@ -10,17 +10,19 @@ namespace Renderer
 {
 	void VulkanContext::InitializeVulkan(GLFWwindow* window)
 	{
+		_window = window;
+
 		createInstance();
 		setupDebugMessenger();
 
 		pickPhysicalDevice();
 
-		createSurface(window);
+		createSurface(_window);
 		findBestQueueFamilyIndexes();
 
 		createLogicalDevice();
 		createQueues();
-		createSwapChain(window);
+		createSwapChain(_window);
 
 		createImageViews();
 
@@ -668,17 +670,17 @@ namespace Renderer
 		while ( vk::Result::eTimeout == _device.waitForFences( *_inFlightFences[_currentFrame], vk::True, UINT64_MAX ) ){}
 
 		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphores[_semaphoreIndex], VK_NULL_HANDLE);
-		_device.resetFences(*_inFlightFences[_currentFrame]);
 
 		if (result == vk::Result::eErrorOutOfDateKHR)
 		{
-			// FIXME: Recreate the swapchain here
 			return;
 		}
 
 		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
 			throw std::runtime_error(
 				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
+
+		_device.resetFences(*_inFlightFences[_currentFrame]);
 
 		_commandBuffers[_currentFrame].reset();
 		recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
@@ -692,7 +694,7 @@ namespace Renderer
 			1,
 			&*_commandBuffers[_currentFrame],
 			1,
-			&*_renderFinishedSemaphores[imageIndex]
+			&*_renderFinishedSemaphores[_semaphoreIndex]
 		);
 
 		_graphics_queue.submit(submitInfo, *_inFlightFences[_currentFrame]);
@@ -752,5 +754,12 @@ namespace Renderer
 			&imageMemoryBarrier
 		);
 		_commandBuffers[_currentFrame].pipelineBarrier2(dependencyInfo);
+	}
+
+	void VulkanContext::recreateSwapChain() {
+		_device.waitIdle();
+
+		createSwapChain(_window);
+		createImageViews();
 	}
 }

@@ -14,7 +14,8 @@ namespace Core
         }
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
         _monitor = glfwGetPrimaryMonitor();
         if (!_monitor)

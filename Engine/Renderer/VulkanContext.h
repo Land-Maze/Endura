@@ -91,6 +91,8 @@ namespace Renderer
         uint32_t _currentFrame = 0;
         uint32_t _semaphoreIndex = 0;
 
+        GLFWwindow* _window = nullptr; // I hate this, but whatever
+
         /**
          * Creates Vulkan instance
          */
@@ -214,5 +216,10 @@ namespace Renderer
 		const vk::PipelineStageFlags2 srcStageMask,
 		const vk::PipelineStageFlags2 dstStageMask
         ) const;
+
+        /**
+         *
+         */
+        void recreateSwapChain();
     };
 }
