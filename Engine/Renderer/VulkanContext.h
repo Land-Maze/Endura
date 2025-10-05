@@ -145,8 +145,7 @@ namespace Renderer
 			vk::DebugUtilsMessageTypeFlagsEXT type,
 			const vk::DebugUtilsMessengerCallbackDataEXT*
 			pCallbackData,
-			void*
-
+			void* a
 		);
 
 		/**

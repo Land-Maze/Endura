@@ -166,10 +166,7 @@ namespace Renderer
 	vk::Bool32 VulkanContext::debugCallback(
 		const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
 		const vk::DebugUtilsMessageTypeFlagsEXT type,
-		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void*
-
-
-
+		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* a
 	)
 	{
 		// FIXME: Implement Logger and put this there
