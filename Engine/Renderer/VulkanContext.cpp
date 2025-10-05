@@ -946,17 +946,48 @@ namespace Renderer
 
 	void VulkanContext::createVertexBuffer()
 	{
-		const vk::DeviceSize bufferSize = sizeof(_vertices[0]) * _vertices.size();
-		createBuffer(
+		vk::DeviceSize bufferSize = sizeof(_vertices[0]) * _vertices.size();
+
+		const vk::BufferCreateInfo stagingInfo(
+			{},
 			bufferSize,
-			vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			_vertexBuffer,
-			_vertexBufferMemory
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::SharingMode::eExclusive
 		);
-		void* data = _vertexBufferMemory.mapMemory(0, bufferSize);
-		memcpy(data, _vertices.data(), (size_t)bufferSize);
-		_vertexBufferMemory.unmapMemory();
+		vk::raii::Buffer stagingBuffer(_device, stagingInfo);
+		const vk::MemoryRequirements memRequirementsStaging = stagingBuffer.getMemoryRequirements();
+		const vk::MemoryAllocateInfo memoryAllocateInfoStaging(
+			memRequirementsStaging.size,
+			findMemoryType(
+				memRequirementsStaging.memoryTypeBits,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+			)
+		);
+		const vk::raii::DeviceMemory stagingBufferMemory(_device, memoryAllocateInfoStaging);
+
+		stagingBuffer.bindMemory(stagingBufferMemory, 0);
+		void* dataStaging = stagingBufferMemory.mapMemory(0, stagingInfo.size);
+		memcpy(dataStaging, _vertices.data(), stagingInfo.size);
+		stagingBufferMemory.unmapMemory();
+
+		const vk::BufferCreateInfo bufferInfo(
+			{},
+			bufferSize,
+			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::SharingMode::eExclusive
+		);
+		_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
+
+		const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
+		const vk::MemoryAllocateInfo memoryAllocateInfo(
+			memRequirements.size,
+			findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)
+		);
+		_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
+
+		_vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
+
+		copyBuffer(stagingBuffer, _vertexBuffer, stagingInfo.size);
 	}
 
 	void VulkanContext::createBuffer(
