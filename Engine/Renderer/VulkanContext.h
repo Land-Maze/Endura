@@ -65,7 +65,7 @@ namespace Renderer
 		/**
 		 * Draws a frame (it will be deleted after making decisions)
 		 */
-		void drawFrame(float time);
+		void drawFrame();
 
 		void fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies);
 
@@ -108,14 +108,6 @@ namespace Renderer
 		uint32_t _semaphoreIndex = 0;
 
 		GLFWwindow* _window = nullptr; // I hate this, but whatever
-
-		vk::raii::DescriptorPool _descriptorPool = VK_NULL_HANDLE;
-		vk::raii::DescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
-		std::vector<vk::raii::DescriptorSet> _descriptorSets;
-
-		vk::raii::Buffer _timeBuffer = VK_NULL_HANDLE;
-		vk::raii::DeviceMemory _timeMemory = VK_NULL_HANDLE;
-		float _timeData;
 
 		bool _frameBufferResized = false;
 

@@ -1,8 +1,3 @@
-cbuffer GlobalUBO : register(b0)
-{
-    float iTime;
-};
-
 float rand(float n) { return frac(sin(n) * 43758.5453); }
 
 struct VSInput {
@@ -15,6 +10,13 @@ struct VertexOutput {
   float2 uv;
   float4 pos : SV_Position;
 };
+
+struct UniformBuffer {
+    float4x4 model;
+    float4x4 view;
+    float4x4 proj;
+};
+ConstantBuffer<UniformBuffer> ubo;
 
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
@@ -31,14 +33,12 @@ VertexOutput vertMain(VSInput input) {
 float4 fragMain(VertexOutput inVert) : SV_Target {
   float2 uv = inVert.uv;
 
-  float3 col = float3(inVert.color.r * abs(tanh(iTime)), inVert.color.g * abs(tanh(iTime)), inVert.color.b * abs(tanh(iTime)));
+  float3 col = float3(inVert.color.r * abs(tanh(uv.r)), inVert.color.g * abs(tanh(uv.g)), inVert.color.b * abs(tanh(1 - uv.r)));
 
   float n = dot(uv, float2(117.9898, 180.288));
   float r = rand(n + 0.5);
 
-  // Interesting patterns
-  // col = lerp(col, float3(r, 1.0-r, sin(r*3.14)), 0.5);
-  col = lerp(col, float3(sinpi(iTime * r)), 0.1);
+  col = lerp(col, float3(sinpi(r)), 0.1);
 
   return float4(col, 1.0);
 }

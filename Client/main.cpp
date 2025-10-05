@@ -33,7 +33,7 @@ int main()
 			const double timeStart = glfwGetTime();
 
 			window.pollEvents();
-			vkContext.drawFrame(timeStart);
+			vkContext.drawFrame();
 			frames++;
 
 			timer += glfwGetTime() - timeStart;
