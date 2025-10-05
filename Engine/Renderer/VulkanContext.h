@@ -41,7 +41,8 @@ namespace Renderer
 		static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
 	};
 
-	struct UniformBufferObject {
+	struct UniformBufferObject
+	{
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 proj;
