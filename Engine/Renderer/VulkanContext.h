@@ -278,5 +278,19 @@ namespace Renderer
 		 *
 		 */
 		void createVertexBuffer();
+
+		/**
+		 *
+		 * @param size
+		 * @param usage
+		 * @param properties
+		 * @param buffer
+		 * @param bufferMemory
+		 */
+		void createBuffer(
+			vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
+			vk::raii::Buffer& buffer,
+			vk::raii::DeviceMemory& bufferMemory
+		) const;
 	};
 }

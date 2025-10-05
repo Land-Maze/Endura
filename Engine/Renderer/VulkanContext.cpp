@@ -168,6 +168,8 @@ namespace Renderer
 		const vk::DebugUtilsMessageTypeFlagsEXT type,
 		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void*
 
+
+
 	)
 	{
 		// FIXME: Implement Logger and put this there
@@ -944,31 +946,40 @@ namespace Renderer
 
 	void VulkanContext::createVertexBuffer()
 	{
+		const vk::DeviceSize bufferSize = sizeof(_vertices[0]) * _vertices.size();
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			_vertexBuffer,
+			_vertexBufferMemory
+		);
+		void* data = _vertexBufferMemory.mapMemory(0, bufferSize);
+		memcpy(data, _vertices.data(), (size_t)bufferSize);
+		_vertexBufferMemory.unmapMemory();
+	}
+
+	void VulkanContext::createBuffer(
+		const vk::DeviceSize size, const vk::BufferUsageFlags usage, const vk::MemoryPropertyFlags properties,
+		vk::raii::Buffer& buffer, vk::raii::DeviceMemory& bufferMemory
+	) const
+	{
 		const vk::BufferCreateInfo bufferInfo(
 			{},
-			sizeof(_vertices[0]) * _vertices.size(),
-			vk::BufferUsageFlagBits::eVertexBuffer,
+			size,
+			usage,
 			vk::SharingMode::eExclusive
 		);
+		buffer = vk::raii::Buffer(_device, bufferInfo);
 
-		_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
-
-		const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
-		const vk::MemoryAllocateInfo memoryAllocateInfo(
+		const vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
+		const vk::MemoryAllocateInfo allocInfo(
 			memRequirements.size,
-			findMemoryType(
-				memRequirements.memoryTypeBits,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-			)
+			findMemoryType(memRequirements.memoryTypeBits, properties)
 		);
 
-		_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
-
-		_vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
-
-		void* data = _vertexBufferMemory.mapMemory(0, bufferInfo.size);
-		memcpy(data, _vertices.data(), bufferInfo.size);
-		_vertexBufferMemory.unmapMemory();
+		bufferMemory = vk::raii::DeviceMemory(_device, allocInfo);
+		buffer.bindMemory(*bufferMemory, 0);
 	}
 
 	vk::VertexInputBindingDescription Vertex::getBindingDescription()
