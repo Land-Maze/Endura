@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan_raii.hpp>
+#include <glm/glm.hpp>
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -32,6 +33,14 @@ inline std::vector deviceExtensions = {
 namespace Renderer
 {
 
+    struct Vertex {
+        glm::vec2 pos;
+        glm::vec3 color;
+
+        static vk::VertexInputBindingDescription getBindingDescription();
+        static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
+    };
+
     struct TimeUBO { float time; };
 
     class VulkanContext
@@ -54,6 +63,8 @@ namespace Renderer
          * Draws a frame (it will be deleted after making decisions)
          */
         void drawFrame(float time);
+
+        void fillVertices(const std::vector<Vertex>& inVert);
 
     private:
         vk::raii::Context _context;
@@ -104,6 +115,10 @@ namespace Renderer
         float _timeData;
 
         bool _frameBufferResized = false;
+
+        vk::raii::Buffer _vertexBuffer = nullptr;
+        vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
+        std::vector<Vertex> _vertices;
 
         /**
          * Creates Vulkan instance
@@ -249,5 +264,10 @@ namespace Renderer
          * @param height
          */
         static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+
+        /**
+         *
+         */
+        void createVertexBuffer();
     };
 }

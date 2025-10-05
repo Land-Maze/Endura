@@ -34,6 +34,8 @@ namespace Renderer
 
 		createSyncObjects();
 
+		createVertexBuffer();
+
 		glfwSetWindowUserPointer(window, &(this->_frameBufferResized));
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
 	}
@@ -450,7 +452,16 @@ namespace Renderer
 
 		vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+		auto bindingDescription = Vertex::getBindingDescription();
+		auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputInfo(
+			{},
+			1,
+			&bindingDescription,
+			2,
+			attributeDescriptions.data()
+		);
 
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo(
 			{},
@@ -713,10 +724,11 @@ namespace Renderer
 			{}
 			);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissors);
 
-		commandBuffer.draw(6, 1, 0, 0);
+		commandBuffer.draw(_vertices.size(), 1, 0, 0);
 
 		commandBuffer.endRendering();
 
@@ -875,5 +887,55 @@ namespace Renderer
 
 		*frameBufferResized = true;
 	}
+
+	void VulkanContext::createVertexBuffer() {
+		const vk::BufferCreateInfo bufferInfo(
+			{},
+			sizeof(_vertices[0]) * _vertices.size(),
+			vk::BufferUsageFlagBits::eVertexBuffer,
+			vk::SharingMode::eExclusive
+			);
+
+		_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
+
+		const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
+		const vk::MemoryAllocateInfo memoryAllocateInfo(
+			memRequirements.size,
+			findMemoryType(memRequirements.memoryTypeBits,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+				);
+
+		_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
+
+		_vertexBuffer.bindMemory( *_vertexBufferMemory, 0 );
+
+		void* data = _vertexBufferMemory.mapMemory(0, bufferInfo.size);
+		memcpy(data, _vertices.data(), bufferInfo.size);
+		_vertexBufferMemory.unmapMemory();
+
+	}
+
+	vk::VertexInputBindingDescription Vertex::getBindingDescription()
+	{
+		return {
+			0,
+			sizeof(Vertex),
+			vk::VertexInputRate::eVertex
+		};
+	}
+
+	std::array<vk::VertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions()
+	{
+		return {
+			vk::VertexInputAttributeDescription( 0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos) ),
+			vk::VertexInputAttributeDescription( 1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color) )
+		};
+	}
+
+	void VulkanContext::fillVertices(const std::vector<Vertex>& inVert)
+	{
+		_vertices = inVert;
+	}
+
 
 }
