@@ -67,7 +67,7 @@ namespace Renderer
 		 */
 		void drawFrame(float time);
 
-		void fillVertices(const std::vector<Vertex>& inVert);
+		void fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies);
 
 	private:
 		vk::raii::Context _context;
@@ -119,9 +119,13 @@ namespace Renderer
 
 		bool _frameBufferResized = false;
 
-		vk::raii::Buffer _vertexBuffer = nullptr;
-		vk::raii::DeviceMemory _vertexBufferMemory = nullptr;
+		vk::raii::Buffer _vertexBuffer = VK_NULL_HANDLE;
+		vk::raii::DeviceMemory _vertexBufferMemory = VK_NULL_HANDLE;
+		vk::raii::Buffer _indexBuffer = VK_NULL_HANDLE;
+		vk::raii::DeviceMemory _indexBufferMemory = VK_NULL_HANDLE;
+
 		std::vector<Vertex> _vertices;
+		std::vector<uint16_t> _vertexIndicies;
 
 		/**
 		 * Creates Vulkan instance
@@ -277,6 +281,11 @@ namespace Renderer
 		 *
 		 */
 		void createVertexBuffer();
+
+		/**
+		 *
+		 */
+		void createIndexBuffer();
 
 		/**
 		 *

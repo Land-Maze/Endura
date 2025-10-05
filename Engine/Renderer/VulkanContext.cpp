@@ -35,6 +35,7 @@ namespace Renderer
 		createSyncObjects();
 
 		createVertexBuffer();
+		createIndexBuffer();
 
 		glfwSetWindowUserPointer(window, &(this->_frameBufferResized));
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
@@ -763,10 +764,11 @@ namespace Renderer
 		);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
+		commandBuffer.bindIndexBuffer( *_indexBuffer, 0, vk::IndexType::eUint16 );
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissors);
 
-		commandBuffer.draw(_vertices.size(), 1, 0, 0);
+		commandBuffer.drawIndexed(_vertexIndicies.size(), 1, 0, 0, 0);
 
 		commandBuffer.endRendering();
 
@@ -1027,9 +1029,10 @@ namespace Renderer
 		};
 	}
 
-	void VulkanContext::fillVertices(const std::vector<Vertex>& inVert)
+	void VulkanContext::fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies)
 	{
 		_vertices = inVert;
+		_vertexIndicies = indicies;
 	}
 
 	void VulkanContext::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const
@@ -1045,4 +1048,22 @@ namespace Renderer
 		_graphics_queue.waitIdle();
 
 	}
+
+	void VulkanContext::createIndexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(_vertexIndicies[0]) * _vertexIndicies.size();
+
+		vk::raii::Buffer stagingBuffer({});
+		vk::raii::DeviceMemory stagingBufferMemory({});
+		createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+
+		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(data, _vertexIndicies.data(), (size_t) bufferSize);
+		stagingBufferMemory.unmapMemory();
+
+		createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, _indexBuffer, _indexBufferMemory);
+
+		copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
+	}
+
 }
