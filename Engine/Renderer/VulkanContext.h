@@ -103,6 +103,7 @@ namespace Renderer
         vk::raii::DeviceMemory _timeMemory = VK_NULL_HANDLE;
         float _timeData;
 
+        bool _frameBufferResized = false;
 
         /**
          * Creates Vulkan instance
@@ -240,5 +241,13 @@ namespace Renderer
          * @return
          */
         uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
+
+        /**
+         *
+         * @param window
+         * @param width
+         * @param height
+         */
+        static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
     };
 }

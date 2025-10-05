@@ -33,6 +33,9 @@ namespace Renderer
 		createCommandBuffer();
 
 		createSyncObjects();
+
+		glfwSetWindowUserPointer(window, &(this->_frameBufferResized));
+		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
 	}
 
 	void VulkanContext::Cleanup()
@@ -738,14 +741,15 @@ namespace Renderer
 
 		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphores[_semaphoreIndex], VK_NULL_HANDLE);
 
-		if (result == vk::Result::eErrorOutOfDateKHR)
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _frameBufferResized )
 		{
+			_frameBufferResized = false;
 			recreateSwapChain();
 			return;
 		}
 
 
-		if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+		if (result != vk::Result::eSuccess)
 			throw std::runtime_error(
 				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
 
@@ -829,8 +833,15 @@ namespace Renderer
 	void VulkanContext::recreateSwapChain() {
 		_device.waitIdle();
 
+		_presentCompleteSemaphores.clear();
+		_renderFinishedSemaphores.clear();
+
+		_swapChainImageViews.clear();
+		_swapChain = nullptr;
+
 		createSwapChain(_window);
 		createImageViews();
+		createSyncObjects();
 	}
 
 	uint32_t VulkanContext::findMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const
@@ -849,6 +860,12 @@ namespace Renderer
 		}
 
 		throw std::runtime_error("Failed to find suitable memory type: for loop didn't return index.");
+	}
+
+	void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+		const auto frameBufferResized = static_cast<bool*>(glfwGetWindowUserPointer(window));
+
+		*frameBufferResized = true;
 	}
 
 }
