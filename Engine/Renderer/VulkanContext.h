@@ -6,6 +6,8 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <glm/glm.hpp>
 
+#include <Renderer/VulkanInstance.h>
+
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
 #else
@@ -18,7 +20,6 @@ constexpr int IMAGE_ARRAY_LAYERS = 1;
 
 inline std::vector validationLayers = {
 	"VK_LAYER_KHRONOS_validation",
-
 };
 
 inline std::vector deviceExtensions = {
@@ -77,8 +78,7 @@ namespace Renderer
 		void fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies);
 
 	private:
-		vk::raii::Context _context;
-		vk::raii::Instance _instance = VK_NULL_HANDLE;
+		std::unique_ptr<VulkanInstance> m_instance = nullptr;
 
 		vk::raii::DebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
 
@@ -136,31 +136,6 @@ namespace Renderer
 
 		std::vector<Vertex> _vertices;
 		std::vector<uint16_t> _vertexIndicies;
-
-		/**
-		 * Creates Vulkan instance
-		 */
-		void createInstance();
-
-		/**
-		 * Sets custom callback to the debug messenger
-		 */
-		void setupDebugMessenger();
-
-		/**
-		 * Checks if the GLFW required extensions are available, and returns them.
-		 *
-		 * @return Extensions vector
-		 */
-		[[nodiscard]] std::vector<const char*> getGLFWRequiredExtension() const;
-
-		static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugCallback(
-			vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
-			vk::DebugUtilsMessageTypeFlagsEXT type,
-			const vk::DebugUtilsMessengerCallbackDataEXT*
-			pCallbackData,
-			void* a
-		);
 
 		/**
 		 * Picks the best GPU with point system

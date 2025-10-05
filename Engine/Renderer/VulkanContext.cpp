@@ -1,5 +1,7 @@
 #include "VulkanContext.h"
 
+#include <Renderer/VulkanInstance.h>
+
 #include <iostream>
 #include <ostream>
 
@@ -9,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
+#include <memory>
 
 namespace Renderer
 {
@@ -16,8 +19,10 @@ namespace Renderer
 	{
 		_window = window;
 
-		createInstance();
-		setupDebugMessenger();
+		m_instance = std::make_unique<VulkanInstance>();
+
+		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0));
+
 		pickPhysicalDevice();
 
 		createSurface(_window);
@@ -57,137 +62,9 @@ namespace Renderer
 		_swapChain = VK_NULL_HANDLE;
 	}
 
-
-	void VulkanContext::createInstance()
-	{
-		constexpr vk::ApplicationInfo application_info(
-			"Endura",
-			VK_MAKE_VERSION(0, 0, 1),
-			"No Engine",
-			VK_MAKE_API_VERSION(0, 0, 0, 1),
-			vk::ApiVersion13
-		);
-
-		std::vector<char const*> requiredLayers;
-		if(enableValidationLayers)
-		{
-			requiredLayers.assign(validationLayers.begin(), validationLayers.end());
-		}
-
-		const auto layerProperties = _context.enumerateInstanceLayerProperties();
-		bool areLayersSupported = true;
-		for(const auto layer : requiredLayers)
-		{
-			bool isLayerSupported = false;
-			for(auto supportedLayer : layerProperties)
-			{
-				if(strcmp(supportedLayer.layerName, layer) == 0)
-				{
-					isLayerSupported = true;
-					break;
-				}
-			}
-			if(!isLayerSupported)
-			{
-				areLayersSupported = false;
-				break;
-			}
-		}
-		if(!areLayersSupported)
-			throw std::runtime_error(
-				"One or more required layers are not supported: areLayersSupported is false."
-			);
-
-		const auto extension = getGLFWRequiredExtension();
-
-		const vk::InstanceCreateInfo create_info(
-			{
-			},
-			&application_info,
-			requiredLayers.size(),
-			requiredLayers.data(),
-			extension.size(),
-			extension.data(),
-			nullptr
-		);
-
-		_instance = vk::raii::Instance(_context, create_info);
-	}
-
-	std::vector<const char*> VulkanContext::getGLFWRequiredExtension() const
-	{
-		u_int32_t glfwExtensionCount = 0;
-		auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-		auto extensionProperties = _context.enumerateInstanceExtensionProperties();
-		bool areExtensionsSupported = true;
-		for(uint32_t i = 0; i < glfwExtensionCount; i++)
-		{
-			bool isExtensionSupported = false;
-			for(auto supportedExtension : extensionProperties)
-			{
-				if(strcmp(supportedExtension.extensionName, glfwExtensions[i]) == 0)
-				{
-					isExtensionSupported = true;
-					break;
-				}
-			}
-			if(!isExtensionSupported)
-			{
-				areExtensionsSupported = false;
-				break;
-			}
-		}
-		if(!areExtensionsSupported)
-			throw std::runtime_error(
-				"One or more required extensions are not supported: areExtensionsSupported is false."
-			);
-
-		std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-		if(enableValidationLayers) extensions.push_back(vk::EXTDebugUtilsExtensionName);
-
-		return extensions;
-	}
-
-	void VulkanContext::setupDebugMessenger()
-	{
-		if constexpr(!enableValidationLayers) return;
-
-		constexpr vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
-		);
-		constexpr vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
-			vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-		);
-		constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
-			{},
-			severity_flags,
-			message_type_flags,
-			&debugCallback
-		);
-
-		debug_messenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
-	}
-
-	vk::Bool32 VulkanContext::debugCallback(
-		const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
-		const vk::DebugUtilsMessageTypeFlagsEXT type,
-		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* a
-	)
-	{
-		// FIXME: Implement Logger and put this there
-		std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage <<
-			std::endl;
-
-		return vk::False;
-	}
-
 	void VulkanContext::pickPhysicalDevice()
 	{
-		const auto devices = _instance.enumeratePhysicalDevices();
+		const auto devices = m_instance->getInstance().enumeratePhysicalDevices();
 
 		if(devices.empty())
 			throw std::runtime_error(
@@ -274,12 +151,12 @@ namespace Renderer
 	{
 		VkSurfaceKHR surface;
 
-		if(glfwCreateWindowSurface(*_instance, window, nullptr, &surface) != VK_SUCCESS)
+		if(glfwCreateWindowSurface(*m_instance->getInstance(), window, nullptr, &surface) != VK_SUCCESS)
 			throw std::runtime_error(
 				"Failed to create window surface: glfwCreateWindowSurface returned non-zero value."
 			);
 
-		_surface = vk::raii::SurfaceKHR(_instance, surface);
+		_surface = vk::raii::SurfaceKHR(m_instance->getInstance(), surface);
 	}
 
 	void VulkanContext::createQueues()
