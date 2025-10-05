@@ -5,6 +5,9 @@
 
 #include <Renderer/Shader.h>
 #include <AssetManager.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
 namespace Renderer
@@ -15,27 +18,32 @@ namespace Renderer
 
 		createInstance();
 		setupDebugMessenger();
-
 		pickPhysicalDevice();
 
 		createSurface(_window);
-		findBestQueueFamilyIndexes();
 
+		findBestQueueFamilyIndexes();
 		createLogicalDevice();
 		createQueues();
-		createSwapChain(_window);
 
+		createSwapChain(_window);
 		createImageViews();
 
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 
 		createCommandPool();
-		createCommandBuffer();
 
 		createSyncObjects();
 
 		createVertexBuffer();
 		createIndexBuffer();
+		createUniformBuffers();
+
+		createDescriptorPool();
+		createDescriptorSets();
+
+		createCommandBuffer();
 
 		glfwSetWindowUserPointer(window, &(this->_frameBufferResized));
 		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
@@ -486,7 +494,7 @@ namespace Renderer
 			{},
 			1,
 			&bindingDescription,
-			2,
+			attributeDescriptions.size(),
 			attributeDescriptions.data()
 		);
 
@@ -520,7 +528,7 @@ namespace Renderer
 			vk::False,
 			vk::PolygonMode::eFill,
 			vk::CullModeFlagBits::eBack,
-			vk::FrontFace::eClockwise,
+			vk::FrontFace::eCounterClockwise,
 			vk::False,
 			{},
 			{},
@@ -552,8 +560,8 @@ namespace Renderer
 
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
 			{},
-			0,
-			{},
+			1,
+			&*_descriptorSetLayout,
 			0
 		);
 
@@ -690,11 +698,16 @@ namespace Renderer
 		);
 
 		commandBuffer.beginRendering(renderingInfo);
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
-		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
-		commandBuffer.bindIndexBuffer( *_indexBuffer, 0, vk::IndexType::eUint16 );
+
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissors);
+
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+
+		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
+		commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
+
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[_currentFrame], nullptr);
 
 		commandBuffer.drawIndexed(_vertexIndicies.size(), 1, 0, 0, 0);
 
@@ -739,6 +752,8 @@ namespace Renderer
 			);
 
 		_device.resetFences(*_inFlightFences[_currentFrame]);
+
+		updateUniformBuffer(_currentFrame);
 
 		_commandBuffers[_currentFrame].reset();
 		recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
@@ -959,16 +974,15 @@ namespace Renderer
 
 	void VulkanContext::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const
 	{
-		const vk::CommandBufferAllocateInfo allocInfo( _commandPool, vk::CommandBufferLevel::ePrimary, 1 );
+		const vk::CommandBufferAllocateInfo allocInfo(_commandPool, vk::CommandBufferLevel::ePrimary, 1);
 		const vk::raii::CommandBuffer commandCopyBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
 
-		commandCopyBuffer.begin(vk::CommandBufferBeginInfo( vk::CommandBufferUsageFlagBits::eOneTimeSubmit ));
+		commandCopyBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 		commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
 		commandCopyBuffer.end();
 
-		_graphics_queue.submit(vk::SubmitInfo({}, {}, {}, 1, &*commandCopyBuffer ), nullptr);
+		_graphics_queue.submit(vk::SubmitInfo({}, {}, {}, 1, &*commandCopyBuffer), nullptr);
 		_graphics_queue.waitIdle();
-
 	}
 
 	void VulkanContext::createIndexBuffer()
@@ -977,15 +991,136 @@ namespace Renderer
 
 		vk::raii::Buffer stagingBuffer({});
 		vk::raii::DeviceMemory stagingBufferMemory({});
-		createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			stagingBuffer,
+			stagingBufferMemory
+		);
 
 		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
-		memcpy(data, _vertexIndicies.data(), (size_t) bufferSize);
+		memcpy(data, _vertexIndicies.data(), (size_t)bufferSize);
 		stagingBufferMemory.unmapMemory();
 
-		createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, _indexBuffer, _indexBufferMemory);
+		createBuffer(
+			bufferSize,
+			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			_indexBuffer,
+			_indexBufferMemory
+		);
 
 		copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
 	}
 
+	void VulkanContext::createDescriptorSetLayout()
+	{
+		constexpr vk::DescriptorSetLayoutBinding uboLayoutBinding(
+			0,
+			vk::DescriptorType::eUniformBuffer,
+			1,
+			vk::ShaderStageFlagBits::eVertex,
+			nullptr
+		);
+
+		const vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &uboLayoutBinding);
+
+		_descriptorSetLayout = vk::raii::DescriptorSetLayout(_device, layoutInfo);
+	}
+
+	void VulkanContext::createUniformBuffers()
+	{
+		_uniformBuffers.clear();
+		_uniformBuffersMemory.clear();
+		_uniformBuffersMapped.clear();
+
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			constexpr vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+			vk::raii::Buffer buffer({});
+			vk::raii::DeviceMemory bufferMem({});
+			createBuffer(
+				bufferSize,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+				buffer,
+				bufferMem
+			);
+			_uniformBuffers.emplace_back(std::move(buffer));
+			_uniformBuffersMemory.emplace_back(std::move(bufferMem));
+			_uniformBuffersMapped.emplace_back(_uniformBuffersMemory[i].mapMemory(0, bufferSize));
+		}
+	}
+
+	void VulkanContext::updateUniformBuffer(uint32_t currentImage) const
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		const auto currentTime = std::chrono::high_resolution_clock::now();
+		const float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject ubo{};
+		ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		ubo.proj = glm::perspective(
+			glm::radians(45.0f),
+			static_cast<float>(_swapChainExtent.width) / static_cast<float>(_swapChainExtent.height),
+			0.1f,
+			10.0f
+		);
+
+		ubo.proj[1][1] *= -1; // Y flip
+
+		memcpy(_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+	}
+
+
+	void VulkanContext::createDescriptorPool()
+	{
+		constexpr vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT);
+
+		const vk::DescriptorPoolCreateInfo poolInfo(
+			vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+			MAX_FRAMES_IN_FLIGHT,
+			1,
+			&poolSize
+		);
+
+		_descriptorPool = vk::raii::DescriptorPool(_device, poolInfo);
+	}
+
+	void VulkanContext::createDescriptorSets()
+	{
+		const std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *_descriptorSetLayout);
+		const vk::DescriptorSetAllocateInfo allocInfo(
+			_descriptorPool,
+			static_cast<uint32_t>(layouts.size()),
+			layouts.data()
+		);
+
+		_descriptorSets.clear();
+		_descriptorSets = _device.allocateDescriptorSets(allocInfo);
+
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vk::DescriptorBufferInfo bufferInfo(
+				_uniformBuffers[i],
+				0,
+				sizeof(UniformBufferObject)
+			);
+			vk::WriteDescriptorSet descriptorWrite(
+				_descriptorSets[i],
+				0,
+				0,
+				1,
+				vk::DescriptorType::eUniformBuffer,
+				{},
+				&bufferInfo
+			);
+
+			_device.updateDescriptorSets(descriptorWrite, {});
+		}
+
+	}
 }

@@ -41,6 +41,12 @@ namespace Renderer
 		static std::array<vk::VertexInputAttributeDescription, 2> getAttributeDescriptions();
 	};
 
+	struct UniformBufferObject {
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+	};
+
 	struct TimeUBO
 	{
 		float time;
@@ -94,6 +100,8 @@ namespace Renderer
 		std::vector<vk::raii::ImageView> _swapChainImageViews;
 		vk::Format _swapChainImageFormat = vk::Format::eUndefined;
 
+		vk::raii::DescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
+
 		vk::raii::PipelineLayout _pipelineLayout = VK_NULL_HANDLE;
 		vk::raii::Pipeline _graphicsPipeline = VK_NULL_HANDLE;
 
@@ -111,10 +119,19 @@ namespace Renderer
 
 		bool _frameBufferResized = false;
 
+
 		vk::raii::Buffer _vertexBuffer = VK_NULL_HANDLE;
 		vk::raii::DeviceMemory _vertexBufferMemory = VK_NULL_HANDLE;
+
 		vk::raii::Buffer _indexBuffer = VK_NULL_HANDLE;
 		vk::raii::DeviceMemory _indexBufferMemory = VK_NULL_HANDLE;
+
+		std::vector<vk::raii::Buffer> _uniformBuffers;
+		std::vector<vk::raii::DeviceMemory> _uniformBuffersMemory;
+		std::vector<void*> _uniformBuffersMapped;
+
+		vk::raii::DescriptorPool _descriptorPool = nullptr;
+		std::vector<vk::raii::DescriptorSet> _descriptorSets;
 
 		std::vector<Vertex> _vertices;
 		std::vector<uint16_t> _vertexIndicies;
@@ -300,5 +317,31 @@ namespace Renderer
 		 * @param size
 		 */
 		void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const;
+
+		/**
+		 *
+		 */
+		void createDescriptorSetLayout();
+
+		/**
+		 *
+		 */
+		void createUniformBuffers();
+
+		/**
+		 *
+		 * @param currentImage
+		 */
+		void updateUniformBuffer(uint32_t currentImage) const;
+
+		/**
+		 *
+		 */
+		void createDescriptorPool();
+
+		/**
+		 *
+		 */
+		void createDescriptorSets();
 	};
 }
