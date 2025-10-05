@@ -53,38 +53,41 @@ namespace Renderer
 	{
 		constexpr vk::ApplicationInfo application_info(
 			"Endura",
-			VK_MAKE_VERSION(0, 0, 1), "No Engine",
-			VK_MAKE_API_VERSION(0, 0, 0, 1), vk::ApiVersion13
+			VK_MAKE_VERSION(0, 0, 1),
+			"No Engine",
+			VK_MAKE_API_VERSION(0, 0, 0, 1),
+			vk::ApiVersion13
 		);
 
 		std::vector<char const*> requiredLayers;
-		if (enableValidationLayers)
+		if(enableValidationLayers)
 		{
 			requiredLayers.assign(validationLayers.begin(), validationLayers.end());
 		}
 
 		const auto layerProperties = _context.enumerateInstanceLayerProperties();
 		bool areLayersSupported = true;
-		for (const auto layer : requiredLayers)
+		for(const auto layer : requiredLayers)
 		{
 			bool isLayerSupported = false;
-			for (auto supportedLayer : layerProperties)
+			for(auto supportedLayer : layerProperties)
 			{
-				if (strcmp(supportedLayer.layerName, layer) == 0)
+				if(strcmp(supportedLayer.layerName, layer) == 0)
 				{
 					isLayerSupported = true;
 					break;
 				}
 			}
-			if (!isLayerSupported)
+			if(!isLayerSupported)
 			{
 				areLayersSupported = false;
 				break;
 			}
 		}
-		if (!areLayersSupported)
+		if(!areLayersSupported)
 			throw std::runtime_error(
-				"One or more required layers are not supported: areLayersSupported is false.");
+				"One or more required layers are not supported: areLayersSupported is false."
+			);
 
 		const auto extension = getGLFWRequiredExtension();
 
@@ -94,8 +97,8 @@ namespace Renderer
 			&application_info,
 			requiredLayers.size(),
 			requiredLayers.data(),
-			extension.size()
-			, extension.data(),
+			extension.size(),
+			extension.data(),
 			nullptr
 		);
 
@@ -109,44 +112,47 @@ namespace Renderer
 
 		auto extensionProperties = _context.enumerateInstanceExtensionProperties();
 		bool areExtensionsSupported = true;
-		for (uint32_t i = 0; i < glfwExtensionCount; i++)
+		for(uint32_t i = 0; i < glfwExtensionCount; i++)
 		{
 			bool isExtensionSupported = false;
-			for (auto supportedExtension : extensionProperties)
+			for(auto supportedExtension : extensionProperties)
 			{
-				if (strcmp(supportedExtension.extensionName, glfwExtensions[i]) == 0)
+				if(strcmp(supportedExtension.extensionName, glfwExtensions[i]) == 0)
 				{
 					isExtensionSupported = true;
 					break;
 				}
 			}
-			if (!isExtensionSupported)
+			if(!isExtensionSupported)
 			{
 				areExtensionsSupported = false;
 				break;
 			}
 		}
-		if (!areExtensionsSupported)
+		if(!areExtensionsSupported)
 			throw std::runtime_error(
-				"One or more required extensions are not supported: areExtensionsSupported is false.");
+				"One or more required extensions are not supported: areExtensionsSupported is false."
+			);
 
 		std::vector extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-		if (enableValidationLayers) extensions.push_back(vk::EXTDebugUtilsExtensionName);
+		if(enableValidationLayers) extensions.push_back(vk::EXTDebugUtilsExtensionName);
 
 		return extensions;
 	}
 
 	void VulkanContext::setupDebugMessenger()
 	{
-		if constexpr (!enableValidationLayers) return;
+		if constexpr(!enableValidationLayers) return;
 
 		constexpr vk::DebugUtilsMessageSeverityFlagsEXT severity_flags(
 			vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-			vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning);
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+		);
 		constexpr vk::DebugUtilsMessageTypeFlagsEXT message_type_flags(
 			vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+		);
 		constexpr vk::DebugUtilsMessengerCreateInfoEXT debug_utils_messenger_create_info(
 			{},
 			severity_flags,
@@ -157,9 +163,12 @@ namespace Renderer
 		debug_messenger = _instance.createDebugUtilsMessengerEXT(debug_utils_messenger_create_info);
 	}
 
-	vk::Bool32 VulkanContext::debugCallback(const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
-	                                        const vk::DebugUtilsMessageTypeFlagsEXT type,
-	                                        const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void*)
+	vk::Bool32 VulkanContext::debugCallback(
+		const vk::DebugUtilsMessageSeverityFlagBitsEXT severity,
+		const vk::DebugUtilsMessageTypeFlagsEXT type,
+		const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void*
+
+	)
 	{
 		// FIXME: Implement Logger and put this there
 		std::cerr << "validation layer: type " << to_string(type) << " msg: " << pCallbackData->pMessage <<
@@ -172,19 +181,20 @@ namespace Renderer
 	{
 		const auto devices = _instance.enumeratePhysicalDevices();
 
-		if (devices.empty())
+		if(devices.empty())
 			throw std::runtime_error(
-				"No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?");
+				"No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?"
+			);
 
 		uint64_t deviceScore = 0;
 
-		for (auto device : devices)
+		for(auto device : devices)
 		{
 			const auto deviceProperties = device.getProperties();
 			const auto deviceFeatures = device.getFeatures();
 			uint64_t score = 0;
 
-			if (deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+			if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 			{
 				score += 1000;
 			}
@@ -192,7 +202,7 @@ namespace Renderer
 			score += deviceProperties.limits.maxImageDimension2D;
 
 
-			if (score > deviceScore)
+			if(score > deviceScore)
 			{
 				_device_features = deviceFeatures;
 				_physical_device = std::move(device);
@@ -200,21 +210,25 @@ namespace Renderer
 			}
 		}
 
-		if (_physical_device == VK_NULL_HANDLE)
+		if(_physical_device == VK_NULL_HANDLE)
 			throw std::runtime_error(
-				"No suitable device with required features was found. Is the GPU enabled?");
+				"No suitable device with required features was found. Is the GPU enabled?"
+			);
 
-		std::printf("Device -> Name: %s, API v%u\n", _physical_device.getProperties().deviceName.data(),
-		            _physical_device.getProperties().apiVersion);
+		std::printf(
+			"Device -> Name: %s, API v%u\n",
+			_physical_device.getProperties().deviceName.data(),
+			_physical_device.getProperties().apiVersion
+		);
 	}
 
 	void VulkanContext::findBestQueueFamilyIndexes()
 	{
 		const std::vector<vk::QueueFamilyProperties> queue_families = _physical_device.getQueueFamilyProperties();
 
-		for (uint32_t i = 0; i < queue_families.size(); i++)
+		for(uint32_t i = 0; i < queue_families.size(); i++)
 		{
-			if (const auto family = queue_families[i]; family.queueFlags & vk::QueueFlagBits::eGraphics &&
+			if(const auto family = queue_families[i]; family.queueFlags & vk::QueueFlagBits::eGraphics &&
 				_physical_device.getSurfaceSupportKHR(i, _surface))
 			{
 				_graphics_family_index = i;
@@ -223,35 +237,39 @@ namespace Renderer
 			}
 		}
 
-		if (_graphics_family_index == UINT32_MAX)
-			for (uint32_t i = 0; i < queue_families.size(); i++)
+		if(_graphics_family_index == UINT32_MAX)
+			for(uint32_t i = 0; i < queue_families.size(); i++)
 			{
 				const auto family = queue_families[i];
-				if ((family.queueFlags & vk::QueueFlagBits::eGraphics) && (_graphics_family_index != UINT32_MAX))
+				if((family.queueFlags & vk::QueueFlagBits::eGraphics) && (_graphics_family_index != UINT32_MAX))
 				{
 					_graphics_family_index = i;
 				}
 
-				if (_physical_device.getSurfaceSupportKHR(
-					static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics), _surface))
+				if(_physical_device.getSurfaceSupportKHR(
+					static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics),
+					_surface
+				))
 				{
 					_present_family_index = _graphics_family_index;
 					break;
 				}
 			}
 
-		if ((_graphics_family_index == UINT32_MAX) || (_present_family_index == UINT32_MAX))
+		if((_graphics_family_index == UINT32_MAX) || (_present_family_index == UINT32_MAX))
 			throw std::runtime_error(
-				"Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set.");
+				"Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set."
+			);
 	}
 
 	void VulkanContext::createSurface(GLFWwindow* window)
 	{
 		VkSurfaceKHR surface;
 
-		if (glfwCreateWindowSurface(*_instance, window, nullptr, &surface) != VK_SUCCESS)
+		if(glfwCreateWindowSurface(*_instance, window, nullptr, &surface) != VK_SUCCESS)
 			throw std::runtime_error(
-				"Failed to create window surface: glfwCreateWindowSurface returned non-zero value.");
+				"Failed to create window surface: glfwCreateWindowSurface returned non-zero value."
+			);
 
 		_surface = vk::raii::SurfaceKHR(_instance, surface);
 	}
@@ -310,9 +328,9 @@ namespace Renderer
 	vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& surfaceFormats)
 	{
 		vk::SurfaceFormatKHR result;
-		for (const auto& surfaceFormat : surfaceFormats)
+		for(const auto& surfaceFormat : surfaceFormats)
 		{
-			if (surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace ==
+			if(surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace ==
 				vk::ColorSpaceKHR::eSrgbNonlinear)
 				result = surfaceFormat;
 		}
@@ -321,9 +339,9 @@ namespace Renderer
 
 	vk::PresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes)
 	{
-		for (const auto& presentMode : presentModes)
+		for(const auto& presentMode : presentModes)
 		{
-			if (presentMode == vk::PresentModeKHR::eMailbox)
+			if(presentMode == vk::PresentModeKHR::eMailbox)
 			{
 				return presentMode;
 			}
@@ -331,21 +349,29 @@ namespace Renderer
 		return vk::PresentModeKHR::eFifo;
 	}
 
-	vk::Extent2D VulkanContext::chooseSwapExtent(const vk::SurfaceCapabilitiesKHR& surface_capabilities,
-	                                             GLFWwindow* window)
+	vk::Extent2D VulkanContext::chooseSwapExtent(
+		const vk::SurfaceCapabilitiesKHR& surface_capabilities,
+		GLFWwindow* window
+	)
 	{
 		// When vulkan sets both width and height to uint32_t maximum value, it means that we have freedom in choosing extent
-		if (surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+		if(surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 			return surface_capabilities.currentExtent;
 
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
 
 		return {
-			std::clamp<uint32_t>(width, surface_capabilities.minImageExtent.width,
-			                     surface_capabilities.maxImageExtent.width),
-			std::clamp<uint32_t>(height, surface_capabilities.minImageExtent.height,
-			                     surface_capabilities.maxImageExtent.height)
+			std::clamp<uint32_t>(
+				width,
+				surface_capabilities.minImageExtent.width,
+				surface_capabilities.maxImageExtent.width
+			),
+			std::clamp<uint32_t>(
+				height,
+				surface_capabilities.minImageExtent.height,
+				surface_capabilities.maxImageExtent.height
+			)
 		};
 	}
 
@@ -374,7 +400,7 @@ namespace Renderer
 		auto queueIndices = queueFamilyIndices.data();
 		vk::SharingMode imageSharingMode;
 
-		if (_graphics_family_index == _present_family_index)
+		if(_graphics_family_index == _present_family_index)
 		{
 			queueFamilyIndexCount = 0;
 			queueIndices = nullptr;
@@ -403,7 +429,8 @@ namespace Renderer
 			surfaceCapabilities.currentTransform,
 			vk::CompositeAlphaFlagBitsKHR::eOpaque,
 			chooseSwapPresentMode(
-				_physical_device.getSurfacePresentModesKHR(_surface)),
+				_physical_device.getSurfacePresentModesKHR(_surface)
+			),
 			VK_TRUE,
 			VK_NULL_HANDLE
 		);
@@ -425,7 +452,7 @@ namespace Renderer
 			1
 		);
 
-		for (const auto image : _swapChainImages)
+		for(const auto image : _swapChainImages)
 		{
 			vk::ImageViewCreateInfo imageViewCreateInfo(
 				{},
@@ -498,7 +525,8 @@ namespace Renderer
 			{},
 			{},
 			1.0f,
-			1.0f);
+			1.0f
+		);
 
 		vk::PipelineColorBlendAttachmentState colorBlendAttachmentState(
 			vk::True,
@@ -509,9 +537,9 @@ namespace Renderer
 			vk::BlendFactor::eZero,
 			vk::BlendOp::eAdd,
 			vk::ColorComponentFlagBits::eR |
-					   vk::ColorComponentFlagBits::eG |
-					   vk::ColorComponentFlagBits::eB |
-					   vk::ColorComponentFlagBits::eA
+			vk::ColorComponentFlagBits::eG |
+			vk::ColorComponentFlagBits::eB |
+			vk::ColorComponentFlagBits::eA
 		);
 
 		vk::PipelineColorBlendStateCreateInfo colorBlendingInfo(
@@ -579,13 +607,13 @@ namespace Renderer
 		vk::DescriptorPoolSize poolSize(
 			vk::DescriptorType::eUniformBuffer,
 			1
-			);
+		);
 		vk::DescriptorPoolCreateInfo poolInfo(
 			vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 			1,
 			1,
 			&poolSize
-			);
+		);
 
 		_descriptorPool = vk::raii::DescriptorPool(_device, poolInfo);
 
@@ -593,32 +621,40 @@ namespace Renderer
 			*_descriptorPool,
 			1,
 			&*_descriptorSetLayout
-			);
+		);
 		_descriptorSets = _device.allocateDescriptorSets(allocInfo);
 
-		_timeBuffer = vk::raii::Buffer(_device, vk::BufferCreateInfo(
-			{},
-			sizeof(TimeUBO),
-			vk::BufferUsageFlagBits::eUniformBuffer
-		));
+		_timeBuffer = vk::raii::Buffer(
+			_device,
+			vk::BufferCreateInfo(
+				{},
+				sizeof(TimeUBO),
+				vk::BufferUsageFlagBits::eUniformBuffer
+			)
+		);
 
-				vk::MemoryRequirements memReq = _timeBuffer.getMemoryRequirements();
-				vk::MemoryAllocateInfo MemoryAllocateInfo(
-					memReq.size,
-					findMemoryType(memReq.memoryTypeBits,
-					vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-					);
-				_timeMemory = vk::raii::DeviceMemory(_device, MemoryAllocateInfo);
+		vk::MemoryRequirements memReq = _timeBuffer.getMemoryRequirements();
+		vk::MemoryAllocateInfo MemoryAllocateInfo(
+			memReq.size,
+			findMemoryType(
+				memReq.memoryTypeBits,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+			)
+		);
+		_timeMemory = vk::raii::DeviceMemory(_device, MemoryAllocateInfo);
 
-				_timeBuffer.bindMemory(*_timeMemory, 0);
+		_timeBuffer.bindMemory(*_timeMemory, 0);
 
 		vk::DescriptorBufferInfo bufferInfo(*_timeBuffer, 0, sizeof(TimeUBO));
 
 		vk::WriteDescriptorSet write(
 			*_descriptorSets[0],
-			0, 0, 1,
+			0,
+			0,
+			1,
 			vk::DescriptorType::eUniformBuffer,
-			nullptr, &bufferInfo
+			nullptr,
+			&bufferInfo
 		);
 
 		_device.updateDescriptorSets(write, nullptr);
@@ -651,18 +687,21 @@ namespace Renderer
 		// FIXME: This should be a Timeline Semaphore
 		_inFlightFences.clear();
 
-		for (size_t i = 0; i < _swapChainImages.size(); i++) {
+		for(size_t i = 0; i < _swapChainImages.size(); i++)
+		{
 			_presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
 			_renderFinishedSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
 		}
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			_inFlightFences.emplace_back(_device, vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
 		}
 	}
 
-	void VulkanContext::recordCommandBuffer(const vk::raii::CommandBuffer& commandBuffer, const uint32_t imageIndex) const
+	void VulkanContext::recordCommandBuffer(
+		const vk::raii::CommandBuffer& commandBuffer, const uint32_t imageIndex
+	) const
 	{
 		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo({}, {});
 		commandBuffer.begin(commandBufferBeginInfo);
@@ -722,7 +761,7 @@ namespace Renderer
 			0,
 			*_descriptorSets[0],
 			{}
-			);
+		);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
 		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
 		commandBuffer.setViewport(0, viewport);
@@ -749,11 +788,17 @@ namespace Renderer
 	{
 		_timeData = time;
 
-		while ( vk::Result::eTimeout == _device.waitForFences( *_inFlightFences[_currentFrame], vk::True, UINT64_MAX ) ){}
+		while(vk::Result::eTimeout == _device.waitForFences(*_inFlightFences[_currentFrame], vk::True, UINT64_MAX))
+		{
+		}
 
-		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphores[_semaphoreIndex], VK_NULL_HANDLE);
+		auto [result, imageIndex] = _swapChain.acquireNextImage(
+			UINT64_MAX,
+			*_presentCompleteSemaphores[_semaphoreIndex],
+			VK_NULL_HANDLE
+		);
 
-		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _frameBufferResized )
+		if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _frameBufferResized)
 		{
 			_frameBufferResized = false;
 			recreateSwapChain();
@@ -761,9 +806,10 @@ namespace Renderer
 		}
 
 
-		if (result != vk::Result::eSuccess)
+		if(result != vk::Result::eSuccess)
 			throw std::runtime_error(
-				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
+				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR."
+			);
 
 		_device.resetFences(*_inFlightFences[_currentFrame]);
 
@@ -797,17 +843,22 @@ namespace Renderer
 		);
 
 		result = _present_queue.presentKHR(presentInfo);
-		if (result != vk::Result::eSuccess) std::printf("Not successful present: presentKHR didn't return eSuccess bit.");
+		if(result != vk::Result::eSuccess)
+			std::printf(
+				"Not successful present: presentKHR didn't return eSuccess bit."
+			);
 
 		_semaphoreIndex = (_semaphoreIndex + 1) % _presentCompleteSemaphores.size();
 		_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
-	void VulkanContext::transition_image_layout(const uint32_t imageIndex, const vk::ImageLayout oldLayout,
-	                                            const vk::ImageLayout newLayout, const vk::AccessFlags2 srcAccessMask,
-	                                            const vk::AccessFlags2 dstAccessMask,
-	                                            const vk::PipelineStageFlags2 srcStageMask,
-	                                            const vk::PipelineStageFlags2 dstStageMask) const
+	void VulkanContext::transition_image_layout(
+		const uint32_t imageIndex, const vk::ImageLayout oldLayout,
+		const vk::ImageLayout newLayout, const vk::AccessFlags2 srcAccessMask,
+		const vk::AccessFlags2 dstAccessMask,
+		const vk::PipelineStageFlags2 srcStageMask,
+		const vk::PipelineStageFlags2 dstStageMask
+	) const
 	{
 		constexpr vk::ImageSubresourceRange subresourceRange(
 			vk::ImageAspectFlagBits::eColor,
@@ -842,11 +893,13 @@ namespace Renderer
 		_commandBuffers[_currentFrame].pipelineBarrier2(dependencyInfo);
 	}
 
-	void VulkanContext::recreateSwapChain() {
+	void VulkanContext::recreateSwapChain()
+	{
 		int width = 0, height = 0;
 		// Even if this look redundant, it will not waste one while cycle to just check if it's minimized
 		glfwGetFramebufferSize(_window, &width, &height);
-		while (width == 0 || height == 0) {
+		while(width == 0 || height == 0)
+		{
 			glfwGetFramebufferSize(_window, &width, &height);
 			glfwWaitEvents();
 		}
@@ -868,12 +921,12 @@ namespace Renderer
 	{
 		const vk::PhysicalDeviceMemoryProperties memProperties = _physical_device.getMemoryProperties();
 
-		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		for(uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
 		{
-			if (
+			if(
 				(typeFilter & (1 << i)) &&
 				(memProperties.memoryTypes[i].propertyFlags & properties) == properties
-				)
+			)
 			{
 				return i;
 			}
@@ -882,37 +935,40 @@ namespace Renderer
 		throw std::runtime_error("Failed to find suitable memory type: for loop didn't return index.");
 	}
 
-	void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+	{
 		const auto frameBufferResized = static_cast<bool*>(glfwGetWindowUserPointer(window));
 
 		*frameBufferResized = true;
 	}
 
-	void VulkanContext::createVertexBuffer() {
+	void VulkanContext::createVertexBuffer()
+	{
 		const vk::BufferCreateInfo bufferInfo(
 			{},
 			sizeof(_vertices[0]) * _vertices.size(),
 			vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::SharingMode::eExclusive
-			);
+		);
 
 		_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
 
 		const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
 		const vk::MemoryAllocateInfo memoryAllocateInfo(
 			memRequirements.size,
-			findMemoryType(memRequirements.memoryTypeBits,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-				);
+			findMemoryType(
+				memRequirements.memoryTypeBits,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+			)
+		);
 
 		_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
 
-		_vertexBuffer.bindMemory( *_vertexBufferMemory, 0 );
+		_vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
 
 		void* data = _vertexBufferMemory.mapMemory(0, bufferInfo.size);
 		memcpy(data, _vertices.data(), bufferInfo.size);
 		_vertexBufferMemory.unmapMemory();
-
 	}
 
 	vk::VertexInputBindingDescription Vertex::getBindingDescription()
@@ -927,8 +983,8 @@ namespace Renderer
 	std::array<vk::VertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions()
 	{
 		return {
-			vk::VertexInputAttributeDescription( 0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos) ),
-			vk::VertexInputAttributeDescription( 1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color) )
+			vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
+			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color))
 		};
 	}
 
@@ -936,6 +992,4 @@ namespace Renderer
 	{
 		_vertices = inVert;
 	}
-
-
 }
