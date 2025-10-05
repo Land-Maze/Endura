@@ -831,6 +831,14 @@ namespace Renderer
 	}
 
 	void VulkanContext::recreateSwapChain() {
+		int width = 0, height = 0;
+		// Even if this look redundant, it will not waste one while cycle to just check if it's minimized
+		glfwGetFramebufferSize(_window, &width, &height);
+		while (width == 0 || height == 0) {
+			glfwGetFramebufferSize(_window, &width, &height);
+			glfwWaitEvents();
+		}
+
 		_device.waitIdle();
 
 		_presentCompleteSemaphores.clear();
