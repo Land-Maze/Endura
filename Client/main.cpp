@@ -3,6 +3,8 @@
 #include <Core/Window.h>
 #include <Renderer/VulkanContext.h>
 
+#include "UI/UiManager.h"
+
 int main()
 {
 	uint32_t frames = 0;
@@ -19,21 +21,29 @@ int main()
 		0, 1, 2, 2, 3, 0
 	};
 
-	Core::Window window;
-	Renderer::VulkanContext vkContext;
-	window.create({});
-	vkContext.fillVertices(vertices, indices);
-	vkContext.InitializeVulkan(window.getGLFWWindow());
+	const auto window = std::make_shared<Core::Window>();
+	const auto vkContext = std::make_shared<Renderer::VulkanContext>();
+
+	const auto uiManager = std::make_shared<UI::UIManager>();
+
+	window->create({800, 600, "Endura"});
+
+	uiManager->setWindow(window);
+	uiManager->initImGUI(vkContext);
+
+
+	vkContext->fillVertices(vertices, indices);
+	vkContext->InitializeVulkan(window->getGLFWWindow());
 
 
 	while(true)
 	{
-		while(!window.shouldClose())
+		while(!window->shouldClose())
 		{
 			const double timeStart = glfwGetTime();
 
-			window.pollEvents();
-			vkContext.drawFrame();
+			window->pollEvents();
+			vkContext->drawFrame();
 			frames++;
 
 			timer += glfwGetTime() - timeStart;
@@ -49,5 +59,5 @@ int main()
 		break;
 	}
 
-	vkContext.Cleanup();
+	vkContext->Cleanup();
 }
