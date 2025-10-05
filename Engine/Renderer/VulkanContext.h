@@ -292,5 +292,13 @@ namespace Renderer
 			vk::raii::Buffer& buffer,
 			vk::raii::DeviceMemory& bufferMemory
 		) const;
+
+		/**
+		 *
+		 * @param srcBuffer
+		 * @param dstBuffer
+		 * @param size
+		 */
+		void copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const;
 	};
 }

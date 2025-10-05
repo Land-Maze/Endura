@@ -1034,4 +1034,18 @@ namespace Renderer
 	{
 		_vertices = inVert;
 	}
+
+	void VulkanContext::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const
+	{
+		const vk::CommandBufferAllocateInfo allocInfo( _commandPool, vk::CommandBufferLevel::ePrimary, 1 );
+		const vk::raii::CommandBuffer commandCopyBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
+
+		commandCopyBuffer.begin(vk::CommandBufferBeginInfo( vk::CommandBufferUsageFlagBits::eOneTimeSubmit ));
+		commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
+		commandCopyBuffer.end();
+
+		_graphics_queue.submit(vk::SubmitInfo({}, {}, {}, 1, &*commandCopyBuffer ), nullptr);
+		_graphics_queue.waitIdle();
+
+	}
 }
