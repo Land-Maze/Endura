@@ -6,6 +6,11 @@ static float2 positions[6] =
     float2[](float2(-0.5, -0.5), float2(0.5, -0.5), float2(-0.5, 0.5),
              float2(-0.5, 0.5), float2(0.5, -0.5), float2(0.5, 0.5));
 
+cbuffer GlobalUBO : register(b0)
+{
+    float iTime;
+};
+
 float rand(float n) { return frac(sin(n) * 43758.5453); }
 
 struct VertexOutput {
@@ -29,18 +34,14 @@ VertexOutput vertMain(uint vid: SV_VertexID) {
 float4 fragMain(VertexOutput inVert) : SV_Target {
   float2 uv = inVert.uv;
 
-  float n = dot(uv, float2(117.9898, 18.288));
-  float r = rand(n + 0.5);
+  float3 col = float3(inVert.color.y * abs(sin(iTime)), inVert.color.r * abs(sin(iTime)), inVert.color.z * abs(sin(iTime)));
 
-  float3 col = float3(uv.x, uv.y, 1.0 - uv.x);
+float n = dot(uv, float2(1217.9898, 180.288));
+  float r = rand(n + 0.5);
 
   // Interesting patterns
   // col = lerp(col, float3(r, 1.0-r, sin(r*3.14)), 0.5);
-  //col = lerp(col, float3(sinpi(r)), 0.5);
-
-    col.r = 0.5 + 0.5 * sin(uv.y * n);
-    col.g = 0.5 + 0.5 * sin(uv.y * n + r);
-    col.b = 0.5 + 0.5 * sin(uv.y * n + r);
+  col = lerp(col, float3(sinpi(iTime * r)), 0.8);
 
   return float4(col, 1.0);
 }

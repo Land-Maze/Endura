@@ -11,7 +11,7 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-constexpr int MAX_FRAMES_IN_FLIGHT = 1;
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 constexpr int IMAGE_ARRAY_LAYERS = 1;
 
@@ -31,6 +31,9 @@ inline std::vector deviceExtensions = {
 
 namespace Renderer
 {
+
+    struct TimeUBO { float time; };
+
     class VulkanContext
     {
     public:
@@ -50,7 +53,7 @@ namespace Renderer
         /**
          * Draws a frame (it will be deleted after making decisions)
          */
-        void drawFrame();
+        void drawFrame(float time);
 
     private:
         vk::raii::Context _context;
@@ -91,6 +94,15 @@ namespace Renderer
         uint32_t _semaphoreIndex = 0;
 
         GLFWwindow* _window = nullptr; // I hate this, but whatever
+
+        vk::raii::DescriptorPool _descriptorPool = VK_NULL_HANDLE;
+        vk::raii::DescriptorSetLayout _descriptorSetLayout = VK_NULL_HANDLE;
+        std::vector<vk::raii::DescriptorSet> _descriptorSets;
+
+        vk::raii::Buffer _timeBuffer = VK_NULL_HANDLE;
+        vk::raii::DeviceMemory _timeMemory = VK_NULL_HANDLE;
+        float _timeData;
+
 
         /**
          * Creates Vulkan instance
@@ -220,5 +232,13 @@ namespace Renderer
          *
          */
         void recreateSwapChain();
+
+        /**
+         *
+         * @param typeFilter
+         * @param properties
+         * @return
+         */
+        uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties) const;
     };
 }

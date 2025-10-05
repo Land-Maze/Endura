@@ -793,6 +793,7 @@
 
 
 #include <iostream>
+#include <cmath>
 #include <Core/Window.h>
 #include <Renderer/VulkanContext.h>
 
@@ -812,7 +813,7 @@ int main() {
             const double timeStart = glfwGetTime();
 
             window.pollEvents();
-            vkContext.drawFrame();
+            vkContext.drawFrame(timeStart);
             frames++;
 
             timer += glfwGetTime() - timeStart;

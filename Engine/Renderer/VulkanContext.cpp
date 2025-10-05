@@ -5,6 +5,7 @@
 
 #include <Renderer/Shader.h>
 #include <AssetManager.h>
+#include <chrono>
 
 namespace Renderer
 {
@@ -507,10 +508,20 @@ namespace Renderer
 			&colorBlendAttachmentState
 		);
 
+		vk::DescriptorSetLayoutBinding timeBinding(
+			0,
+			vk::DescriptorType::eUniformBuffer,
+			1,
+			vk::ShaderStageFlagBits::eFragment
+		);
+
+		vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &timeBinding);
+		_descriptorSetLayout = vk::raii::DescriptorSetLayout(_device, layoutInfo);
+
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo(
 			{},
-			0,
-			{},
+			1,
+			&*_descriptorSetLayout,
 			0
 		);
 
@@ -550,6 +561,53 @@ namespace Renderer
 		);
 
 		_graphicsPipeline = vk::raii::Pipeline(_device, VK_NULL_HANDLE, pipelineInfo);
+
+		vk::DescriptorPoolSize poolSize(
+			vk::DescriptorType::eUniformBuffer,
+			1
+			);
+		vk::DescriptorPoolCreateInfo poolInfo(
+			vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+			1,
+			1,
+			&poolSize
+			);
+
+		_descriptorPool = vk::raii::DescriptorPool(_device, poolInfo);
+
+		vk::DescriptorSetAllocateInfo allocInfo(
+			*_descriptorPool,
+			1,
+			&*_descriptorSetLayout
+			);
+		_descriptorSets = _device.allocateDescriptorSets(allocInfo);
+
+		_timeBuffer = vk::raii::Buffer(_device, vk::BufferCreateInfo(
+			{},
+			sizeof(TimeUBO),
+			vk::BufferUsageFlagBits::eUniformBuffer
+		));
+
+				vk::MemoryRequirements memReq = _timeBuffer.getMemoryRequirements();
+				vk::MemoryAllocateInfo MemoryAllocateInfo(
+					memReq.size,
+					findMemoryType(memReq.memoryTypeBits,
+					vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+					);
+				_timeMemory = vk::raii::DeviceMemory(_device, MemoryAllocateInfo);
+
+				_timeBuffer.bindMemory(*_timeMemory, 0);
+
+		vk::DescriptorBufferInfo bufferInfo(*_timeBuffer, 0, sizeof(TimeUBO));
+
+		vk::WriteDescriptorSet write(
+			*_descriptorSets[0],
+			0, 0, 1,
+			vk::DescriptorType::eUniformBuffer,
+			nullptr, &bufferInfo
+		);
+
+		_device.updateDescriptorSets(write, nullptr);
 	}
 
 	void VulkanContext::createCommandPool()
@@ -605,7 +663,7 @@ namespace Renderer
 			vk::PipelineStageFlagBits2::eColorAttachmentOutput
 		);
 
-		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.1f, 0.3f, 0.1f, 1.0f);
+		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 
 		const vk::RenderingAttachmentInfo attachmentInfo(
 			_swapChainImageViews[imageIndex],
@@ -644,6 +702,13 @@ namespace Renderer
 		);
 
 		commandBuffer.beginRendering(renderingInfo);
+		commandBuffer.bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			_pipelineLayout,
+			0,
+			*_descriptorSets[0],
+			{}
+			);
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissors);
@@ -665,8 +730,10 @@ namespace Renderer
 		commandBuffer.end();
 	}
 
-	void VulkanContext::drawFrame()
+	void VulkanContext::drawFrame(const float time)
 	{
+		_timeData = time;
+
 		while ( vk::Result::eTimeout == _device.waitForFences( *_inFlightFences[_currentFrame], vk::True, UINT64_MAX ) ){}
 
 		auto [result, imageIndex] = _swapChain.acquireNextImage(UINT64_MAX, *_presentCompleteSemaphores[_semaphoreIndex], VK_NULL_HANDLE);
@@ -683,6 +750,10 @@ namespace Renderer
 				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR.");
 
 		_device.resetFences(*_inFlightFences[_currentFrame]);
+
+		void* data = _timeMemory.mapMemory(0, sizeof(float));
+		memcpy(data, &_timeData, sizeof(float));
+		_timeMemory.unmapMemory();
 
 		_commandBuffers[_currentFrame].reset();
 		recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
@@ -710,6 +781,7 @@ namespace Renderer
 		);
 
 		result = _present_queue.presentKHR(presentInfo);
+		if (result != vk::Result::eSuccess) std::printf("Not successful present: presentKHR didn't return eSuccess bit.");
 
 		_semaphoreIndex = (_semaphoreIndex + 1) % _presentCompleteSemaphores.size();
 		_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -760,4 +832,23 @@ namespace Renderer
 		createSwapChain(_window);
 		createImageViews();
 	}
+
+	uint32_t VulkanContext::findMemoryType(const uint32_t typeFilter, const vk::MemoryPropertyFlags properties) const
+	{
+		const vk::PhysicalDeviceMemoryProperties memProperties = _physical_device.getMemoryProperties();
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		{
+			if (
+				(typeFilter & (1 << i)) &&
+				(memProperties.memoryTypes[i].propertyFlags & properties) == properties
+				)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find suitable memory type: for loop didn't return index.");
+	}
+
 }
