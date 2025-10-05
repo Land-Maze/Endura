@@ -3,6 +3,8 @@
 #include <string>
 #include <vulkan/vulkan_raii.hpp>
 
+#include <Core/Window.h>
+
 #define VULKAN_API_VERSION vk::ApiVersion13
 
 #ifdef NDEBUG
@@ -26,12 +28,12 @@ namespace Renderer
 		VulkanInstance& operator=(const VulkanInstance&) = delete;
 
 		/**
-		 * Initializes Vulkan instance and sets layers if it's the debug build.
+		 * Initializes Vulkan instance, Vulkan surface and sets layers if it's the debug build.
 		 *
 		 * @param appName Application name
 		 * @param appVersion Application version
 		 */
-		void initialize(const char* appName, uint32_t appVersion);
+		void initialize(const char* appName, uint32_t appVersion, GLFWwindow* window);
 
 		/**
 		 * Cleans up the resources.
@@ -42,7 +44,12 @@ namespace Renderer
 		/**
 		 * @return Vulkan Instance
 		 */
-		vk::raii::Instance& getInstance() { return m_instance; }
+		vk::raii::Instance& getInstance() noexcept { return m_instance; }
+
+		/**
+		 * @return Vulkan Surface
+		 */
+		vk::raii::SurfaceKHR& getSurface() noexcept { return m_surface; }
 
 	private:
 		/**
@@ -80,8 +87,13 @@ namespace Renderer
 			const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* data
 		);
 
+		void createSurface(GLFWwindow* window);
+
 		vk::raii::Context m_context;
 		vk::raii::Instance m_instance = VK_NULL_HANDLE;
+
+		vk::raii::SurfaceKHR m_surface = VK_NULL_HANDLE;
+
 		vk::raii::DebugUtilsMessengerEXT m_debug_messenger = VK_NULL_HANDLE;
 
 		const std::vector<const char*> m_validationLayers = {

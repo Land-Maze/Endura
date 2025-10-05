@@ -80,8 +80,6 @@ namespace Renderer
 	private:
 		std::unique_ptr<VulkanInstance> m_instance = nullptr;
 
-		vk::raii::DebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
-
 		vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
 		vk::PhysicalDeviceFeatures _device_features;
 

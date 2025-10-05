@@ -5,10 +5,11 @@
 
 namespace Renderer
 {
-	void VulkanInstance::initialize(const char* appName, const uint32_t appVersion)
+	void VulkanInstance::initialize(const char* appName, const uint32_t appVersion, GLFWwindow* window)
 	{
 		createInstance(appName, appVersion);
 		setupDebugMessenger();
+		createSurface(window);
 	}
 
 	void VulkanInstance::createInstance(const char* appName, const uint32_t appVersion)
@@ -153,7 +154,20 @@ namespace Renderer
 			<< ""
 			<< std::endl;
 
-
 		return vk::False;
+	}
+
+	void VulkanInstance::createSurface(GLFWwindow* window)
+	{
+		VkSurfaceKHR surface;
+
+		if(glfwCreateWindowSurface(*m_instance, window, nullptr, &surface) != VK_SUCCESS)
+		{
+			throw std::runtime_error(
+				"Failed to create window surface: glfwCreateWindowSurface returned non-zero value."
+			);
+		}
+
+		m_surface = vk::raii::SurfaceKHR(m_instance, surface);
 	}
 }

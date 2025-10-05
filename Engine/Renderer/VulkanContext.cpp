@@ -21,11 +21,10 @@ namespace Renderer
 
 		m_instance = std::make_unique<VulkanInstance>();
 
-		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0));
-
+		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0), window);
 		pickPhysicalDevice();
 
-		createSurface(_window);
+		m_instance->getSurface().swap(_surface);
 
 		findBestQueueFamilyIndexes();
 		createLogicalDevice();
