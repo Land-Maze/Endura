@@ -21,8 +21,8 @@ ConstantBuffer<UniformBuffer> ubo;
 [shader("vertex")]
 VertexOutput vertMain(VSInput input) {
   VertexOutput output;
-  output.pos = float4(input.inPosition, 0.0, 1.0);
-  output.color = input.inColor;
+  output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 0.0, 1.0))));
+  output.color = mul(input.inColor, float3(ubo.model[0].x, ubo.model[0].y, ubo.model[0].z));
 
   output.uv = input.inPosition + 0.5;
 

@@ -9,10 +9,10 @@ int main()
 	float timer = 0.0f;
 
 	const std::vector<Renderer::Vertex> vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+		{{-0.9f, -0.9f}, {1.0f, 0.0f, 0.0f}},
+		{{0.9f, -0.9f}, {0.0f, 1.0f, 0.0f}},
+		{{0.9f, 0.9f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.9f, 0.9f}, {1.0f, 1.0f, 1.0f}}
 	};
 
 	const std::vector<uint16_t> indices = {
