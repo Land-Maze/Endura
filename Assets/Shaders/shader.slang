@@ -1,5 +1,3 @@
-float rand(float n) { return frac(sin(n) * 43758.5453); }
-
 struct VSInput {
     float2 inPosition;
     float3 inColor;
@@ -36,9 +34,8 @@ float4 fragMain(VertexOutput inVert) : SV_Target {
   float3 col = float3(inVert.color.r * abs(tanh(uv.r)), inVert.color.g * abs(tanh(uv.g)), inVert.color.b * abs(tanh(1 - uv.r)));
 
   float n = dot(uv, float2(117.9898, 180.288));
-  float r = rand(n + 0.5);
 
-  col = lerp(col, float3(sinpi(r)), 0.1);
+  col = lerp(col, float3(sinpi(n)), 0.2);
 
   return float4(col, 1.0);
 }
