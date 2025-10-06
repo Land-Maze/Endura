@@ -1,7 +1,5 @@
 #include "VulkanContext.h"
 
-#include <Renderer/VulkanInstance.h>
-
 #include <iostream>
 #include <ostream>
 
@@ -20,15 +18,21 @@ namespace Renderer
 		_window = window;
 
 		m_instance = std::make_unique<VulkanInstance>();
+		m_device = std::make_unique<VulkanDevice>();
 
 		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0), window);
-		pickPhysicalDevice();
-
 		m_instance->getSurface().swap(_surface);
 
-		findBestQueueFamilyIndexes();
-		createLogicalDevice();
-		createQueues();
+		m_device->create(m_instance->getInstance(), _surface);
+
+		_physical_device = m_device->getPhysicalDevice();
+		_device_features = m_device->getPhysicalDeviceFeatures();
+		_device = std::move(m_device->getDevice());
+		_graphics_queue = m_device->getQueues().graphicsQueue;
+		_present_queue = m_device->getQueues().presentQueue;
+
+		_graphics_family_index = m_device->getQueueFamilyIndex();
+		_present_family_index = m_device->getQueueFamilyIndex();
 
 		createSwapChain(_window);
 		createImageViews();
@@ -59,154 +63,6 @@ namespace Renderer
 
 		_swapChainImageViews.clear();
 		_swapChain = VK_NULL_HANDLE;
-	}
-
-	void VulkanContext::pickPhysicalDevice()
-	{
-		const auto devices = m_instance->getInstance().enumeratePhysicalDevices();
-
-		if(devices.empty())
-			throw std::runtime_error(
-				"No suitable device with Vulkan support was found: enumeratePhysicalDevices() returned empty vector. Is the GPU enabled?"
-			);
-
-		uint64_t deviceScore = 0;
-
-		for(auto device : devices)
-		{
-			const auto deviceProperties = device.getProperties();
-			const auto deviceFeatures = device.getFeatures();
-			uint64_t score = 0;
-
-			if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-			{
-				score += 1000;
-			}
-
-			score += deviceProperties.limits.maxImageDimension2D;
-
-
-			if(score > deviceScore)
-			{
-				_device_features = deviceFeatures;
-				_physical_device = std::move(device);
-				deviceScore = score;
-			}
-		}
-
-		if(_physical_device == VK_NULL_HANDLE)
-			throw std::runtime_error(
-				"No suitable device with required features was found. Is the GPU enabled?"
-			);
-
-		std::printf(
-			"Device -> Name: %s, API v%u\n",
-			_physical_device.getProperties().deviceName.data(),
-			_physical_device.getProperties().apiVersion
-		);
-	}
-
-	void VulkanContext::findBestQueueFamilyIndexes()
-	{
-		const std::vector<vk::QueueFamilyProperties> queue_families = _physical_device.getQueueFamilyProperties();
-
-		for(uint32_t i = 0; i < queue_families.size(); i++)
-		{
-			if(const auto family = queue_families[i]; family.queueFlags & vk::QueueFlagBits::eGraphics &&
-				_physical_device.getSurfaceSupportKHR(i, _surface))
-			{
-				_graphics_family_index = i;
-				_present_family_index = i;
-				break;
-			}
-		}
-
-		if(_graphics_family_index == UINT32_MAX)
-			for(uint32_t i = 0; i < queue_families.size(); i++)
-			{
-				const auto family = queue_families[i];
-				if((family.queueFlags & vk::QueueFlagBits::eGraphics) && (_graphics_family_index != UINT32_MAX))
-				{
-					_graphics_family_index = i;
-				}
-
-				if(_physical_device.getSurfaceSupportKHR(
-					static_cast<uint32_t>(family.queueFlags & vk::QueueFlagBits::eGraphics),
-					_surface
-				))
-				{
-					_present_family_index = _graphics_family_index;
-					break;
-				}
-			}
-
-		if((_graphics_family_index == UINT32_MAX) || (_present_family_index == UINT32_MAX))
-			throw std::runtime_error(
-				"Could not find a queue for graphics or present: neither of _graphics_family_index nor _present_family_index is set."
-			);
-	}
-
-	void VulkanContext::createSurface(GLFWwindow* window)
-	{
-		VkSurfaceKHR surface;
-
-		if(glfwCreateWindowSurface(*m_instance->getInstance(), window, nullptr, &surface) != VK_SUCCESS)
-			throw std::runtime_error(
-				"Failed to create window surface: glfwCreateWindowSurface returned non-zero value."
-			);
-
-		_surface = vk::raii::SurfaceKHR(m_instance->getInstance(), surface);
-	}
-
-	void VulkanContext::createQueues()
-	{
-		_graphics_queue = vk::raii::Queue(_device, _graphics_family_index, 0);
-		_present_queue = vk::raii::Queue(_device, _present_family_index, 0);
-	}
-
-	void VulkanContext::createLogicalDevice()
-	{
-		auto features = _physical_device.getFeatures2();
-		features.features.sampleRateShading = vk::True;
-
-		vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT extendedDynamicStateFeatures;
-		extendedDynamicStateFeatures.extendedDynamicState = vk::True;
-
-		vk::PhysicalDeviceVulkan11Features deviceVulkan11Features;
-		deviceVulkan11Features.pNext = extendedDynamicStateFeatures;
-		deviceVulkan11Features.shaderDrawParameters = vk::True;
-
-
-		vk::PhysicalDeviceVulkan13Features deviceVulkan13Features;
-		deviceVulkan13Features.dynamicRendering = vk::True;
-		deviceVulkan13Features.synchronization2 = vk::True;
-
-		deviceVulkan13Features.pNext = deviceVulkan11Features;
-
-		features.setPNext(deviceVulkan13Features);
-
-		constexpr float queuePriority = 0.0f;
-
-		const vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
-			{},
-			_graphics_family_index,
-			1,
-			&queuePriority
-		);
-
-		vk::DeviceCreateInfo deviceCreateInfo(
-			{},
-			1,
-			&deviceQueueCreateInfo,
-			static_cast<uint32_t>(validationLayers.size()),
-			validationLayers.data(),
-			static_cast<uint32_t>(deviceExtensions.size()),
-			deviceExtensions.data(),
-			{},
-			features
-		);
-
-		_device = vk::raii::Device(_physical_device, deviceCreateInfo);
 	}
 
 	vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& surfaceFormats)

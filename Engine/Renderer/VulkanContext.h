@@ -8,6 +8,8 @@
 
 #include <Renderer/VulkanInstance.h>
 
+#include <Renderer/VulkanDevice.h>
+
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
 #else
@@ -79,6 +81,7 @@ namespace Renderer
 
 	private:
 		std::unique_ptr<VulkanInstance> m_instance = nullptr;
+		std::unique_ptr<VulkanDevice> m_device = nullptr;
 
 		vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
 		vk::PhysicalDeviceFeatures _device_features;
@@ -134,32 +137,6 @@ namespace Renderer
 
 		std::vector<Vertex> _vertices;
 		std::vector<uint16_t> _vertexIndicies;
-
-		/**
-		 * Picks the best GPU with point system
-		 */
-		void pickPhysicalDevice();
-
-		/**
-		 * Finds the best queue family (with both present and graphics queue)
-		 */
-		void findBestQueueFamilyIndexes();
-
-		/**
-		 * This will create a Vulkan Surface
-		 * @param window GLFW handle of the window
-		 */
-		void createSurface(GLFWwindow* window);
-
-		/**
-		 * Creates logical device
-		 */
-		void createLogicalDevice();
-
-		/**
-		 * Creates graphical and present queue
-		 */
-		void createQueues();
 
 		/**
 		 *  This is a helper function
