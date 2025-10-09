@@ -11,7 +11,7 @@ namespace UI
 		UIManager() = default;
 		~UIManager() = default;
 
-		void initImGUI(const std::shared_ptr<Renderer::VulkanContext>& vkContext);
+		void initImGUI(const Renderer::VulkanContext& vkContext);
 
 		void setWindow(const std::shared_ptr<Core::Window>& window);
 

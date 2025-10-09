@@ -7,7 +7,7 @@ namespace UI
 		this->m_window = window;
 	}
 
-	void UIManager::initImGUI(const std::shared_ptr<Renderer::VulkanContext>& vkContext)
+	void UIManager::initImGUI(const Renderer::VulkanContext& vkContext)
 	{
 		return;
 	}
