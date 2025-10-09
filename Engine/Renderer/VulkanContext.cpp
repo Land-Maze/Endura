@@ -24,7 +24,7 @@ namespace Renderer
 		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0), window);
 		m_instance->getSurface().swap(_surface);
 
-		m_device->create(m_instance->getInstance(), _surface);
+		m_device->create(m_instance->getInstance(), _surface, MAX_FRAMES_IN_FLIGHT);
 
 		_physical_device = m_device->getPhysicalDevice();
 		_device_features = m_device->getPhysicalDeviceFeatures();

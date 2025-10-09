@@ -80,9 +80,9 @@ namespace Renderer
 		void fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies);
 
 	private:
-		std::unique_ptr<VulkanInstance> m_instance = nullptr;
-		std::unique_ptr<VulkanDevice> m_device = nullptr;
-		std::unique_ptr<VulkanSwapchain> m_swapchain = nullptr;
+		std::unique_ptr<VulkanInstance> m_instance;
+		std::unique_ptr<VulkanDevice> m_device;
+		std::unique_ptr<VulkanSwapchain> m_swapchain;
 
 		vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
 		vk::PhysicalDeviceFeatures _device_features;

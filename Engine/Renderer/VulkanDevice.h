@@ -1,5 +1,7 @@
 #pragma once
+
 #include <vulkan/vulkan_raii.hpp>
+#include <vk_mem_alloc.h>
 
 namespace Renderer
 {
@@ -13,16 +15,10 @@ namespace Renderer
 
 	public:
 		VulkanDevice() = default;
-		~VulkanDevice() = default;
+		~VulkanDevice();
 
 		VulkanDevice(const VulkanDevice&) = delete;
 		VulkanDevice& operator=(const VulkanDevice&) = delete;
-
-		/**
-		 * Cleans up the resources.
-		 * It's empty since RAII handles it.
-		 */
-		void cleanup() = delete;
 
 		/**
 		 * This will create physical device, logical device, queues.
@@ -30,8 +26,13 @@ namespace Renderer
 		 *
 		 * @param instance Vulkan instance
 		 * @param surface Vulkan surface
+		 * @param framesInFlight Frames in flight counter
 		 */
-		void create(const vk::raii::Instance& instance, const vk::SurfaceKHR& surface);
+		void create(const vk::raii::Instance& instance, const vk::SurfaceKHR& surface, uint32_t framesInFlight);
+
+		vk::raii::CommandBuffer beginSingleTimeCommands();
+
+		void endSingleTimeCommands(vk::raii::CommandBuffer&& cmd);
 
 		/**
 		 *
@@ -63,6 +64,10 @@ namespace Renderer
 		 */
 		vk::PhysicalDeviceFeatures& getPhysicalDeviceFeatures() { return m_physicalDeviceFeatures; }
 
+		VmaAllocator getAllocator() const { return m_allocator; }
+
+		vk::raii::CommandBuffer& getFrameCommandBuffer(uint32_t frameIndex);
+
 	private:
 		/**
 		 * Picks the best GPU with point system
@@ -84,10 +89,25 @@ namespace Renderer
 		 */
 		void createQueues();
 
+		void createCommandPools();
+
+		void createAllocator(const vk::raii::Instance& instance);
+
+		void destroyAllocator();
+
 		vk::raii::PhysicalDevice m_physicalDevice = VK_NULL_HANDLE;
 		vk::PhysicalDeviceFeatures m_physicalDeviceFeatures;
 
 		vk::raii::Device m_device = VK_NULL_HANDLE;
+
+		uint32_t m_maxFramesInFlight = 1;
+
+		VmaAllocator m_allocator;
+
+		vk::raii::CommandPool m_uploadCommandPool = VK_NULL_HANDLE;
+		std::vector<vk::raii::CommandPool> m_frameCommandPools;
+
+		std::vector<vk::raii::CommandBuffer> m_frameCommandBuffers;
 
 		sQueue m_queues;
 
