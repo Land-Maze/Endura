@@ -19,6 +19,7 @@ namespace Renderer
 
 		m_instance = std::make_unique<VulkanInstance>();
 		m_device = std::make_unique<VulkanDevice>();
+		m_swapchain = std::make_unique<VulkanSwapchain>();
 
 		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0), window);
 		m_instance->getSurface().swap(_surface);
@@ -34,8 +35,20 @@ namespace Renderer
 		_graphics_family_index = m_device->getQueueFamilyIndex();
 		_present_family_index = m_device->getQueueFamilyIndex();
 
-		createSwapChain(_window);
-		createImageViews();
+		m_swapchain->create(
+			window,
+			_device,
+			_surface,
+			_physical_device,
+			_graphics_family_index,
+			_present_family_index
+		);
+
+		_swapChain.swap(m_swapchain->getSwapchain());
+		_swapChainImageViews.swap(m_swapchain->getSwapchainImageViews());
+		_swapChainExtent = m_swapchain->getExtent();
+		_swapChainImages = m_swapchain->getSwapchainImages();
+		_swapChainImageFormat = m_swapchain->getSwapchainImageFormat();
 
 		createDescriptorSetLayout();
 		createGraphicsPipeline();
@@ -63,148 +76,6 @@ namespace Renderer
 
 		_swapChainImageViews.clear();
 		_swapChain = VK_NULL_HANDLE;
-	}
-
-	vk::SurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& surfaceFormats)
-	{
-		vk::SurfaceFormatKHR result;
-		for(const auto& surfaceFormat : surfaceFormats)
-		{
-			if(surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace ==
-				vk::ColorSpaceKHR::eSrgbNonlinear)
-				result = surfaceFormat;
-		}
-		return result;
-	}
-
-	vk::PresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes)
-	{
-		for(const auto& presentMode : presentModes)
-		{
-			if(presentMode == vk::PresentModeKHR::eMailbox)
-			{
-				return presentMode;
-			}
-		}
-		return vk::PresentModeKHR::eFifo;
-	}
-
-	vk::Extent2D VulkanContext::chooseSwapExtent(
-		const vk::SurfaceCapabilitiesKHR& surface_capabilities,
-		GLFWwindow* window
-	)
-	{
-		// When vulkan sets both width and height to uint32_t maximum value, it means that we have freedom in choosing extent
-		if(surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-			return surface_capabilities.currentExtent;
-
-		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
-
-		return {
-			std::clamp<uint32_t>(
-				width,
-				surface_capabilities.minImageExtent.width,
-				surface_capabilities.maxImageExtent.width
-			),
-			std::clamp<uint32_t>(
-				height,
-				surface_capabilities.minImageExtent.height,
-				surface_capabilities.maxImageExtent.height
-			)
-		};
-	}
-
-
-	void VulkanContext::createSwapChain(GLFWwindow* window)
-	{
-		const auto surfaceCapabilities = _physical_device.getSurfaceCapabilitiesKHR(_surface);
-		const auto swapChainSurfaceFormat = chooseSwapSurfaceFormat(_physical_device.getSurfaceFormatsKHR(_surface));
-
-		_swapChainExtent = chooseSwapExtent(surfaceCapabilities, window);
-
-		const auto minImageCount = std::max(3u, surfaceCapabilities.minImageCount);
-
-		// This ternary operator checks if the minImageCount is bigger that the limit,
-		// and if the limit is NOT endless (value of greater than 0),
-		// it will return the limit count, otherwise returns required image count
-		const auto imageCount = (
-			minImageCount > surfaceCapabilities.maxImageCount
-			&& surfaceCapabilities.maxImageCount > 0
-				? surfaceCapabilities.maxImageCount
-				: minImageCount);
-
-		const std::vector<uint32_t> queueFamilyIndices = {_graphics_family_index, _present_family_index};
-
-		uint32_t queueFamilyIndexCount;
-		auto queueIndices = queueFamilyIndices.data();
-		vk::SharingMode imageSharingMode;
-
-		if(_graphics_family_index == _present_family_index)
-		{
-			queueFamilyIndexCount = 0;
-			queueIndices = nullptr;
-			imageSharingMode = vk::SharingMode::eExclusive;
-		}
-		else
-		{
-			queueFamilyIndexCount = queueFamilyIndices.size();
-			imageSharingMode = vk::SharingMode::eConcurrent;
-		}
-
-		_swapChainImageFormat = swapChainSurfaceFormat.format;
-
-		const vk::SwapchainCreateInfoKHR swapchainCreateInfo(
-			{},
-			_surface,
-			imageCount,
-			swapChainSurfaceFormat.format,
-			swapChainSurfaceFormat.colorSpace,
-			_swapChainExtent,
-			IMAGE_ARRAY_LAYERS,
-			vk::ImageUsageFlagBits::eColorAttachment,
-			imageSharingMode,
-			queueFamilyIndexCount,
-			queueIndices,
-			surfaceCapabilities.currentTransform,
-			vk::CompositeAlphaFlagBitsKHR::eOpaque,
-			chooseSwapPresentMode(
-				_physical_device.getSurfacePresentModesKHR(_surface)
-			),
-			VK_TRUE,
-			VK_NULL_HANDLE
-		);
-
-		_swapChain = vk::raii::SwapchainKHR(_device, swapchainCreateInfo);
-		_swapChainImages = _swapChain.getImages();
-	}
-
-	void VulkanContext::createImageViews()
-	{
-		_swapChainImageViews.clear();
-		_swapChainImageViews.reserve(_swapChainImages.size());
-
-		constexpr vk::ImageSubresourceRange subresourceRange(
-			vk::ImageAspectFlagBits::eColor,
-			0,
-			1,
-			0,
-			1
-		);
-
-		for(const auto image : _swapChainImages)
-		{
-			vk::ImageViewCreateInfo imageViewCreateInfo(
-				{},
-				image,
-				vk::ImageViewType::e2D,
-				_swapChainImageFormat,
-				{},
-				subresourceRange
-			);
-
-			_swapChainImageViews.emplace_back(_device, imageViewCreateInfo);
-		}
 	}
 
 	void VulkanContext::createGraphicsPipeline()
@@ -582,8 +453,12 @@ namespace Renderer
 		_swapChainImageViews.clear();
 		_swapChain = nullptr;
 
-		createSwapChain(_window);
-		createImageViews();
+		m_swapchain->create(_window,
+			_device,
+			_surface,
+			_physical_device,
+			_graphics_family_index,
+			_present_family_index);
 		createSyncObjects();
 	}
 

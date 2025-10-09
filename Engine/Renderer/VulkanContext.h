@@ -7,8 +7,8 @@
 #include <glm/glm.hpp>
 
 #include <Renderer/VulkanInstance.h>
-
 #include <Renderer/VulkanDevice.h>
+#include <Renderer/VulkanSwapchain.h>
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -82,6 +82,7 @@ namespace Renderer
 	private:
 		std::unique_ptr<VulkanInstance> m_instance = nullptr;
 		std::unique_ptr<VulkanDevice> m_device = nullptr;
+		std::unique_ptr<VulkanSwapchain> m_swapchain = nullptr;
 
 		vk::raii::PhysicalDevice _physical_device = VK_NULL_HANDLE;
 		vk::PhysicalDeviceFeatures _device_features;
@@ -137,46 +138,6 @@ namespace Renderer
 
 		std::vector<Vertex> _vertices;
 		std::vector<uint16_t> _vertexIndicies;
-
-		/**
-		 *  This is a helper function
-		 *  Picks the swap surface format for the swap chain
-		 *
-		 * @param surfaceFormats Available surface formats from physical device
-		 * @return Chosen swap surface format
-		 */
-		static vk::SurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& surfaceFormats);
-
-		/**
-		 * This is a helper function
-		 * Picks the present mode
-		 *
-		 * @param presentModes Available present modes
-		 * @return Chosen present mode
-		 */
-		static vk::PresentModeKHR chooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& presentModes);
-		/**
-		 * This is a helper function
-		 * Returns swap extend in 2 dimension (width, height)
-		 *
-		 * @param surface_capabilities Surface capabilities
-		 * @param window
-		 * @return Chosen swap extent
-		 */
-		static vk::Extent2D chooseSwapExtent(
-			const vk::SurfaceCapabilitiesKHR& surface_capabilities,
-			GLFWwindow* window
-		);
-
-		/**
-		 * Creates swap chain
-		 */
-		void createSwapChain(GLFWwindow* window);
-
-		/**
-		 * Create image views
-		 */
-		void createImageViews();
 
 		/**
 		 * Creates graphical pipeline
