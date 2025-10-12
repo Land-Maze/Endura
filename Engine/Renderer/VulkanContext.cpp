@@ -13,66 +13,127 @@
 
 namespace Renderer
 {
-	void VulkanContext::InitializeVulkan(GLFWwindow* window)
+	void VulkanContext::initializeVulkan(GLFWwindow* window)
 	{
-		_window = window;
+		m_window = window;
 
 		m_instance = std::make_unique<VulkanInstance>();
 		m_device = std::make_unique<VulkanDevice>();
 		m_swapchain = std::make_unique<VulkanSwapchain>();
 
-		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0,0,1,0), window);
-		m_instance->getSurface().swap(_surface);
+		m_instance->initialize("Endura", VK_MAKE_API_VERSION(0, 0, 1, 0), window);
 
 		m_device->create(m_instance->getInstance(), _surface, MAX_FRAMES_IN_FLIGHT);
 
-		_physical_device = m_device->getPhysicalDevice();
-		_device_features = m_device->getPhysicalDeviceFeatures();
-		_device = std::move(m_device->getDevice());
-		_graphics_queue = m_device->getQueues().graphicsQueue;
-		_present_queue = m_device->getQueues().presentQueue;
-
-		_graphics_family_index = m_device->getQueueFamilyIndex();
-		_present_family_index = m_device->getQueueFamilyIndex();
-
 		m_swapchain->create(
 			window,
-			_device,
-			_surface,
-			_physical_device,
-			_graphics_family_index,
-			_present_family_index
+			m_device->getDevice(),
+			m_instance->getSurface(),
+			m_device->getPhysicalDevice(),
+			m_device->getQueueFamilyIndex(),
+			m_device->getQueueFamilyIndex()
 		);
 
-		_swapChain.swap(m_swapchain->getSwapchain());
-		_swapChainImageViews.swap(m_swapchain->getSwapchainImageViews());
-		_swapChainExtent = m_swapchain->getExtent();
-		_swapChainImages = m_swapchain->getSwapchainImages();
-		_swapChainImageFormat = m_swapchain->getSwapchainImageFormat();
+		// createDescriptorSetLayout();
+		// createGraphicsPipeline();
 
-		createDescriptorSetLayout();
-		createGraphicsPipeline();
-
-		createCommandPool();
+		// createCommandPool();
 
 		createSyncObjects();
 
-		createVertexBuffer();
-		createIndexBuffer();
-		createUniformBuffers();
-
-		createDescriptorPool();
-		createDescriptorSets();
-
-		createCommandBuffer();
+		// createVertexBuffer();
+		// createIndexBuffer();
+		// createUniformBuffers();
+		// createDescriptorPool();
+		// createDescriptorSets();
+		// createCommandBuffer();
 
 		glfwSetWindowUserPointer(window, &(this->_frameBufferResized));
-		glfwSetFramebufferSizeCallback(_window, framebufferResizeCallback);
+		glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
 	}
 
-	void VulkanContext::Cleanup()
+	void VulkanContext::beginFrame()
 	{
-		_device.waitIdle();
+		while(vk::Result::eTimeout == m_device->getDevice().waitForFences(*m_inFlightFences[m_currentFrame], vk::True, UINT64_MAX))
+		{
+		}
+
+		auto [result, imageIndex] = m_swapchain->getSwapchain().acquireNextImage(
+			UINT64_MAX,
+			*m_presentCompleteSemaphores[m_semaphoreIndex],
+			VK_NULL_HANDLE
+		);
+
+		if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _frameBufferResized)
+		{
+			_frameBufferResized = false;
+			m_swapchain->create(
+				m_window,
+				m_device->getDevice(),
+				m_instance->getSurface(),
+				m_device->getPhysicalDevice(),
+				m_device->getQueueFamilyIndex(),
+				m_device->getQueueFamilyIndex()
+			);
+			return;
+		}
+
+		if(result != vk::Result::eSuccess)
+			throw std::runtime_error(
+				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR."
+			);
+
+		m_currentResult = result;
+		m_currentImageIndex = imageIndex;
+
+		m_device->getDevice().resetFences(*m_inFlightFences[m_currentFrame]);
+
+		m_device->getFrameCommandBuffer(imageIndex).reset();
+		// recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
+	}
+
+	void VulkanContext::drawFrame()
+	{
+	}
+
+	void VulkanContext::endFrame()
+	{
+		constexpr vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+
+		const vk::SubmitInfo submitInfo(
+			1,
+			&*m_presentCompleteSemaphores[m_semaphoreIndex],
+			&waitDestinationStageMask,
+			1,
+			&*m_device->getFrameCommandBuffer(m_currentImageIndex),
+			1,
+			&*m_renderFinishedSemaphores[m_currentImageIndex]
+		);
+
+		_graphics_queue.submit(submitInfo, *m_inFlightFences[m_currentFrame]);
+
+		const vk::PresentInfoKHR presentInfo(
+			1,
+			&*m_renderFinishedSemaphores[m_currentImageIndex],
+			1,
+			&*m_swapchain->getSwapchain(),
+			&m_currentImageIndex
+		);
+
+		m_currentResult = _present_queue.presentKHR(presentInfo);
+		if(m_currentResult != vk::Result::eSuccess)
+			std::printf(
+				"Not successful present: presentKHR didn't return eSuccess bit."
+			);
+
+		m_semaphoreIndex = (m_semaphoreIndex + 1) % m_presentCompleteSemaphores.size();
+		m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
+
+	void VulkanContext::cleanup()
+	{
+		m_device->getDevice().waitIdle();
 
 		_swapChainImageViews.clear();
 		_swapChain = VK_NULL_HANDLE;
@@ -228,170 +289,112 @@ namespace Renderer
 
 	void VulkanContext::createSyncObjects()
 	{
-		_presentCompleteSemaphores.clear();
-		_renderFinishedSemaphores.clear();
+		m_presentCompleteSemaphores.clear();
+		m_renderFinishedSemaphores.clear();
 		// FIXME: This should be a Timeline Semaphore
-		_inFlightFences.clear();
+		m_inFlightFences.clear();
 
 		for(size_t i = 0; i < _swapChainImages.size(); i++)
 		{
-			_presentCompleteSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
-			_renderFinishedSemaphores.emplace_back(_device, vk::SemaphoreCreateInfo());
+			m_presentCompleteSemaphores.emplace_back(m_device->getDevice(), vk::SemaphoreCreateInfo());
+			m_renderFinishedSemaphores.emplace_back(m_device->getDevice(), vk::SemaphoreCreateInfo());
 		}
 
 		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
-			_inFlightFences.emplace_back(_device, vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
+			m_inFlightFences.emplace_back(m_device->getDevice(), vk::FenceCreateInfo(vk::FenceCreateFlagBits::eSignaled));
 		}
 	}
 
-	void VulkanContext::recordCommandBuffer(
-		const vk::raii::CommandBuffer& commandBuffer, const uint32_t imageIndex
-	) const
-	{
-		constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo({}, {});
-		commandBuffer.begin(commandBufferBeginInfo);
-
-		transition_image_layout(
-			imageIndex,
-			vk::ImageLayout::eUndefined,
-			vk::ImageLayout::eColorAttachmentOptimal,
-			{},
-			vk::AccessFlagBits2::eColorAttachmentWrite,
-			vk::PipelineStageFlagBits2::eTopOfPipe,
-			vk::PipelineStageFlagBits2::eColorAttachmentOutput
-		);
-
-		constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-
-		const vk::RenderingAttachmentInfo attachmentInfo(
-			_swapChainImageViews[imageIndex],
-			vk::ImageLayout::eColorAttachmentOptimal,
-			{},
-			{},
-			{},
-			vk::AttachmentLoadOp::eClear,
-			vk::AttachmentStoreOp::eStore,
-			clearColor
-		);
-
-		const vk::Rect2D renderArea({0, 0}, _swapChainExtent);
-
-		const vk::RenderingInfo renderingInfo(
-			{},
-			renderArea,
-			1,
-			{},
-			1,
-			&attachmentInfo
-		);
-
-		const vk::Viewport viewport(
-			0.0f,
-			0.0f,
-			static_cast<float>(_swapChainExtent.width),
-			static_cast<float>(_swapChainExtent.height),
-			0.0f,
-			1.0f
-		);
-
-		const vk::Rect2D scissors(
-			vk::Offset2D(0, 0),
-			_swapChainExtent
-		);
-
-		commandBuffer.beginRendering(renderingInfo);
-
-		commandBuffer.setViewport(0, viewport);
-		commandBuffer.setScissor(0, scissors);
-
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
-
-		commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
-		commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
-
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipelineLayout, 0, *_descriptorSets[_currentFrame], nullptr);
-
-		commandBuffer.drawIndexed(_vertexIndicies.size(), 1, 0, 0, 0);
-
-		commandBuffer.endRendering();
-
-		transition_image_layout(
-			imageIndex,
-			vk::ImageLayout::eColorAttachmentOptimal,
-			vk::ImageLayout::ePresentSrcKHR,
-			vk::AccessFlagBits2::eColorAttachmentWrite,
-			{},
-			vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-			vk::PipelineStageFlagBits2::eBottomOfPipe
-		);
-
-		commandBuffer.end();
-	}
-
-	void VulkanContext::drawFrame()
-	{
-		while(vk::Result::eTimeout == _device.waitForFences(*_inFlightFences[_currentFrame], vk::True, UINT64_MAX))
-		{
-		}
-
-		auto [result, imageIndex] = _swapChain.acquireNextImage(
-			UINT64_MAX,
-			*_presentCompleteSemaphores[_semaphoreIndex],
-			VK_NULL_HANDLE
-		);
-
-		if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR || _frameBufferResized)
-		{
-			_frameBufferResized = false;
-			recreateSwapChain();
-			return;
-		}
-
-
-		if(result != vk::Result::eSuccess)
-			throw std::runtime_error(
-				"Failed to acquire swap chain image: result has value other than eSuccess or eSuboptimalKHR."
-			);
-
-		_device.resetFences(*_inFlightFences[_currentFrame]);
-
-		updateUniformBuffer(_currentFrame);
-
-		_commandBuffers[_currentFrame].reset();
-		recordCommandBuffer(_commandBuffers[_currentFrame], imageIndex);
-
-		constexpr vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-
-		const vk::SubmitInfo submitInfo(
-			1,
-			&*_presentCompleteSemaphores[_semaphoreIndex],
-			&waitDestinationStageMask,
-			1,
-			&*_commandBuffers[_currentFrame],
-			1,
-			&*_renderFinishedSemaphores[imageIndex]
-		);
-
-		_graphics_queue.submit(submitInfo, *_inFlightFences[_currentFrame]);
-
-		const vk::PresentInfoKHR presentInfo(
-			1,
-			&*_renderFinishedSemaphores[imageIndex],
-			1,
-			&*_swapChain,
-			&imageIndex
-		);
-
-		result = _present_queue.presentKHR(presentInfo);
-		if(result != vk::Result::eSuccess)
-			std::printf(
-				"Not successful present: presentKHR didn't return eSuccess bit."
-			);
-
-		_semaphoreIndex = (_semaphoreIndex + 1) % _presentCompleteSemaphores.size();
-		_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-	}
+	// void VulkanContext::recordCommandBuffer(
+	// 	const vk::raii::CommandBuffer& commandBuffer, const uint32_t imageIndex
+	// ) const
+	// {
+	// 	constexpr vk::CommandBufferBeginInfo commandBufferBeginInfo({}, {});
+	// 	commandBuffer.begin(commandBufferBeginInfo);
+	//
+	// 	transition_image_layout(
+	// 		imageIndex,
+	// 		vk::ImageLayout::eUndefined,
+	// 		vk::ImageLayout::eColorAttachmentOptimal,
+	// 		{},
+	// 		vk::AccessFlagBits2::eColorAttachmentWrite,
+	// 		vk::PipelineStageFlagBits2::eTopOfPipe,
+	// 		vk::PipelineStageFlagBits2::eColorAttachmentOutput
+	// 	);
+	//
+	// 	constexpr vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+	//
+	// 	const vk::RenderingAttachmentInfo attachmentInfo(
+	// 		_swapChainImageViews[imageIndex],
+	// 		vk::ImageLayout::eColorAttachmentOptimal,
+	// 		{},
+	// 		{},
+	// 		{},
+	// 		vk::AttachmentLoadOp::eClear,
+	// 		vk::AttachmentStoreOp::eStore,
+	// 		clearColor
+	// 	);
+	//
+	// 	const vk::Rect2D renderArea({0, 0}, _swapChainExtent);
+	//
+	// 	const vk::RenderingInfo renderingInfo(
+	// 		{},
+	// 		renderArea,
+	// 		1,
+	// 		{},
+	// 		1,
+	// 		&attachmentInfo
+	// 	);
+	//
+	// 	const vk::Viewport viewport(
+	// 		0.0f,
+	// 		0.0f,
+	// 		static_cast<float>(_swapChainExtent.width),
+	// 		static_cast<float>(_swapChainExtent.height),
+	// 		0.0f,
+	// 		1.0f
+	// 	);
+	//
+	// 	const vk::Rect2D scissors(
+	// 		vk::Offset2D(0, 0),
+	// 		_swapChainExtent
+	// 	);
+	//
+	// 	commandBuffer.beginRendering(renderingInfo);
+	//
+	// 	commandBuffer.setViewport(0, viewport);
+	// 	commandBuffer.setScissor(0, scissors);
+	//
+	// 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _graphicsPipeline);
+	//
+	// 	commandBuffer.bindVertexBuffers(0, *_vertexBuffer, {0});
+	// 	commandBuffer.bindIndexBuffer(*_indexBuffer, 0, vk::IndexType::eUint16);
+	//
+	// 	commandBuffer.bindDescriptorSets(
+	// 		vk::PipelineBindPoint::eGraphics,
+	// 		_pipelineLayout,
+	// 		0,
+	// 		*_descriptorSets[m_currentFrame],
+	// 		nullptr
+	// 	);
+	//
+	// 	commandBuffer.drawIndexed(_vertexIndicies.size(), 1, 0, 0, 0);
+	//
+	// 	commandBuffer.endRendering();
+	//
+	// 	transition_image_layout(
+	// 		imageIndex,
+	// 		vk::ImageLayout::eColorAttachmentOptimal,
+	// 		vk::ImageLayout::ePresentSrcKHR,
+	// 		vk::AccessFlagBits2::eColorAttachmentWrite,
+	// 		{},
+	// 		vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+	// 		vk::PipelineStageFlagBits2::eBottomOfPipe
+	// 	);
+	//
+	// 	commandBuffer.end();
+	// }
 
 	void VulkanContext::transition_image_layout(
 		const uint32_t imageIndex, const vk::ImageLayout oldLayout,
@@ -431,34 +434,33 @@ namespace Renderer
 			1,
 			&imageMemoryBarrier
 		);
-		_commandBuffers[_currentFrame].pipelineBarrier2(dependencyInfo);
+		_commandBuffers[m_currentFrame].pipelineBarrier2(dependencyInfo);
 	}
 
 	void VulkanContext::recreateSwapChain()
 	{
 		int width = 0, height = 0;
 		// Even if this look redundant, it will not waste one while cycle to just check if it's minimized
-		glfwGetFramebufferSize(_window, &width, &height);
+		glfwGetFramebufferSize(m_window, &width, &height);
 		while(width == 0 || height == 0)
 		{
-			glfwGetFramebufferSize(_window, &width, &height);
+			glfwGetFramebufferSize(m_window, &width, &height);
 			glfwWaitEvents();
 		}
 
-		_device.waitIdle();
+		m_device->getDevice().waitIdle();
 
-		_presentCompleteSemaphores.clear();
-		_renderFinishedSemaphores.clear();
+		m_presentCompleteSemaphores.clear();
+		m_renderFinishedSemaphores.clear();
 
-		_swapChainImageViews.clear();
-		_swapChain = nullptr;
-
-		m_swapchain->create(_window,
+		m_swapchain->create(
+			m_window,
 			_device,
 			_surface,
 			_physical_device,
 			_graphics_family_index,
-			_present_family_index);
+			_present_family_index
+		);
 		createSyncObjects();
 	}
 
@@ -487,247 +489,246 @@ namespace Renderer
 		*frameBufferResized = true;
 	}
 
-	void VulkanContext::createVertexBuffer()
-	{
-		vk::DeviceSize bufferSize = sizeof(_vertices[0]) * _vertices.size();
-
-		const vk::BufferCreateInfo stagingInfo(
-			{},
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::SharingMode::eExclusive
-		);
-		vk::raii::Buffer stagingBuffer(_device, stagingInfo);
-		const vk::MemoryRequirements memRequirementsStaging = stagingBuffer.getMemoryRequirements();
-		const vk::MemoryAllocateInfo memoryAllocateInfoStaging(
-			memRequirementsStaging.size,
-			findMemoryType(
-				memRequirementsStaging.memoryTypeBits,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-			)
-		);
-		const vk::raii::DeviceMemory stagingBufferMemory(_device, memoryAllocateInfoStaging);
-
-		stagingBuffer.bindMemory(stagingBufferMemory, 0);
-		void* dataStaging = stagingBufferMemory.mapMemory(0, stagingInfo.size);
-		memcpy(dataStaging, _vertices.data(), stagingInfo.size);
-		stagingBufferMemory.unmapMemory();
-
-		const vk::BufferCreateInfo bufferInfo(
-			{},
-			bufferSize,
-			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::SharingMode::eExclusive
-		);
-		_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
-
-		const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
-		const vk::MemoryAllocateInfo memoryAllocateInfo(
-			memRequirements.size,
-			findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)
-		);
-		_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
-
-		_vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
-
-		copyBuffer(stagingBuffer, _vertexBuffer, stagingInfo.size);
-	}
-
-	void VulkanContext::createBuffer(
-		const vk::DeviceSize size, const vk::BufferUsageFlags usage, const vk::MemoryPropertyFlags properties,
-		vk::raii::Buffer& buffer, vk::raii::DeviceMemory& bufferMemory
-	) const
-	{
-		const vk::BufferCreateInfo bufferInfo(
-			{},
-			size,
-			usage,
-			vk::SharingMode::eExclusive
-		);
-		buffer = vk::raii::Buffer(_device, bufferInfo);
-
-		const vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
-		const vk::MemoryAllocateInfo allocInfo(
-			memRequirements.size,
-			findMemoryType(memRequirements.memoryTypeBits, properties)
-		);
-
-		bufferMemory = vk::raii::DeviceMemory(_device, allocInfo);
-		buffer.bindMemory(*bufferMemory, 0);
-	}
-
-	vk::VertexInputBindingDescription Vertex::getBindingDescription()
-	{
-		return {
-			0,
-			sizeof(Vertex),
-			vk::VertexInputRate::eVertex
-		};
-	}
-
-	std::array<vk::VertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions()
-	{
-		return {
-			vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
-			vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color))
-		};
-	}
-
-	void VulkanContext::fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies)
-	{
-		_vertices = inVert;
-		_vertexIndicies = indicies;
-	}
-
-	void VulkanContext::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const
-	{
-		const vk::CommandBufferAllocateInfo allocInfo(_commandPool, vk::CommandBufferLevel::ePrimary, 1);
-		const vk::raii::CommandBuffer commandCopyBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
-
-		commandCopyBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-		commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
-		commandCopyBuffer.end();
-
-		_graphics_queue.submit(vk::SubmitInfo({}, {}, {}, 1, &*commandCopyBuffer), nullptr);
-		_graphics_queue.waitIdle();
-	}
-
-	void VulkanContext::createIndexBuffer()
-	{
-		vk::DeviceSize bufferSize = sizeof(_vertexIndicies[0]) * _vertexIndicies.size();
-
-		vk::raii::Buffer stagingBuffer({});
-		vk::raii::DeviceMemory stagingBufferMemory({});
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-			stagingBuffer,
-			stagingBufferMemory
-		);
-
-		void* data = stagingBufferMemory.mapMemory(0, bufferSize);
-		memcpy(data, _vertexIndicies.data(), (size_t)bufferSize);
-		stagingBufferMemory.unmapMemory();
-
-		createBuffer(
-			bufferSize,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal,
-			_indexBuffer,
-			_indexBufferMemory
-		);
-
-		copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
-	}
-
-	void VulkanContext::createDescriptorSetLayout()
-	{
-		constexpr vk::DescriptorSetLayoutBinding uboLayoutBinding(
-			0,
-			vk::DescriptorType::eUniformBuffer,
-			1,
-			vk::ShaderStageFlagBits::eVertex,
-			nullptr
-		);
-
-		const vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &uboLayoutBinding);
-
-		_descriptorSetLayout = vk::raii::DescriptorSetLayout(_device, layoutInfo);
-	}
-
-	void VulkanContext::createUniformBuffers()
-	{
-		_uniformBuffers.clear();
-		_uniformBuffersMemory.clear();
-		_uniformBuffersMapped.clear();
-
-		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-		{
-			constexpr vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
-			vk::raii::Buffer buffer({});
-			vk::raii::DeviceMemory bufferMem({});
-			createBuffer(
-				bufferSize,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-				buffer,
-				bufferMem
-			);
-			_uniformBuffers.emplace_back(std::move(buffer));
-			_uniformBuffersMemory.emplace_back(std::move(bufferMem));
-			_uniformBuffersMapped.emplace_back(_uniformBuffersMemory[i].mapMemory(0, bufferSize));
-		}
-	}
-
-	void VulkanContext::updateUniformBuffer(uint32_t currentImage) const
-	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		const auto currentTime = std::chrono::high_resolution_clock::now();
-		const float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		UniformBufferObject ubo{};
-		ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		ubo.proj = glm::perspective(
-			glm::radians(45.0f),
-			static_cast<float>(_swapChainExtent.width) / static_cast<float>(_swapChainExtent.height),
-			0.1f,
-			10.0f
-		);
-
-		ubo.proj[1][1] *= -1; // Y flip
-
-		memcpy(_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
-	}
-
-
-	void VulkanContext::createDescriptorPool()
-	{
-		constexpr vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT);
-
-		const vk::DescriptorPoolCreateInfo poolInfo(
-			vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-			MAX_FRAMES_IN_FLIGHT,
-			1,
-			&poolSize
-		);
-
-		_descriptorPool = vk::raii::DescriptorPool(_device, poolInfo);
-	}
-
-	void VulkanContext::createDescriptorSets()
-	{
-		const std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *_descriptorSetLayout);
-		const vk::DescriptorSetAllocateInfo allocInfo(
-			_descriptorPool,
-			static_cast<uint32_t>(layouts.size()),
-			layouts.data()
-		);
-
-		_descriptorSets.clear();
-		_descriptorSets = _device.allocateDescriptorSets(allocInfo);
-
-		for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-		{
-			vk::DescriptorBufferInfo bufferInfo(
-				_uniformBuffers[i],
-				0,
-				sizeof(UniformBufferObject)
-			);
-			vk::WriteDescriptorSet descriptorWrite(
-				_descriptorSets[i],
-				0,
-				0,
-				1,
-				vk::DescriptorType::eUniformBuffer,
-				{},
-				&bufferInfo
-			);
-
-			_device.updateDescriptorSets(descriptorWrite, {});
-		}
-
-	}
+	// void VulkanContext::createVertexBuffer()
+	// {
+	// 	vk::DeviceSize bufferSize = sizeof(_vertices[0]) * _vertices.size();
+	//
+	// 	const vk::BufferCreateInfo stagingInfo(
+	// 		{},
+	// 		bufferSize,
+	// 		vk::BufferUsageFlagBits::eTransferSrc,
+	// 		vk::SharingMode::eExclusive
+	// 	);
+	// 	vk::raii::Buffer stagingBuffer(_device, stagingInfo);
+	// 	const vk::MemoryRequirements memRequirementsStaging = stagingBuffer.getMemoryRequirements();
+	// 	const vk::MemoryAllocateInfo memoryAllocateInfoStaging(
+	// 		memRequirementsStaging.size,
+	// 		findMemoryType(
+	// 			memRequirementsStaging.memoryTypeBits,
+	// 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+	// 		)
+	// 	);
+	// 	const vk::raii::DeviceMemory stagingBufferMemory(_device, memoryAllocateInfoStaging);
+	//
+	// 	stagingBuffer.bindMemory(stagingBufferMemory, 0);
+	// 	void* dataStaging = stagingBufferMemory.mapMemory(0, stagingInfo.size);
+	// 	memcpy(dataStaging, _vertices.data(), stagingInfo.size);
+	// 	stagingBufferMemory.unmapMemory();
+	//
+	// 	const vk::BufferCreateInfo bufferInfo(
+	// 		{},
+	// 		bufferSize,
+	// 		vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+	// 		vk::SharingMode::eExclusive
+	// 	);
+	// 	_vertexBuffer = vk::raii::Buffer(_device, bufferInfo);
+	//
+	// 	const vk::MemoryRequirements memRequirements = _vertexBuffer.getMemoryRequirements();
+	// 	const vk::MemoryAllocateInfo memoryAllocateInfo(
+	// 		memRequirements.size,
+	// 		findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal)
+	// 	);
+	// 	_vertexBufferMemory = vk::raii::DeviceMemory(_device, memoryAllocateInfo);
+	//
+	// 	_vertexBuffer.bindMemory(*_vertexBufferMemory, 0);
+	//
+	// 	copyBuffer(stagingBuffer, _vertexBuffer, stagingInfo.size);
+	// }
+	//
+	// void VulkanContext::createBuffer(
+	// 	const vk::DeviceSize size, const vk::BufferUsageFlags usage, const vk::MemoryPropertyFlags properties,
+	// 	vk::raii::Buffer& buffer, vk::raii::DeviceMemory& bufferMemory
+	// ) const
+	// {
+	// 	const vk::BufferCreateInfo bufferInfo(
+	// 		{},
+	// 		size,
+	// 		usage,
+	// 		vk::SharingMode::eExclusive
+	// 	);
+	// 	buffer = vk::raii::Buffer(_device, bufferInfo);
+	//
+	// 	const vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
+	// 	const vk::MemoryAllocateInfo allocInfo(
+	// 		memRequirements.size,
+	// 		findMemoryType(memRequirements.memoryTypeBits, properties)
+	// 	);
+	//
+	// 	bufferMemory = vk::raii::DeviceMemory(_device, allocInfo);
+	// 	buffer.bindMemory(*bufferMemory, 0);
+	// }
+	//
+	// vk::VertexInputBindingDescription Vertex::getBindingDescription()
+	// {
+	// 	return {
+	// 		0,
+	// 		sizeof(Vertex),
+	// 		vk::VertexInputRate::eVertex
+	// 	};
+	// }
+	//
+	// std::array<vk::VertexInputAttributeDescription, 2> Vertex::getAttributeDescriptions()
+	// {
+	// 	return {
+	// 		vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, pos)),
+	// 		vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color))
+	// 	};
+	// }
+	//
+	// void VulkanContext::fillVertices(const std::vector<Vertex>& inVert, const std::vector<uint16_t>& indicies)
+	// {
+	// 	_vertices = inVert;
+	// 	_vertexIndicies = indicies;
+	// }
+	//
+	// void VulkanContext::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size) const
+	// {
+	// 	const vk::CommandBufferAllocateInfo allocInfo(_commandPool, vk::CommandBufferLevel::ePrimary, 1);
+	// 	const vk::raii::CommandBuffer commandCopyBuffer = std::move(_device.allocateCommandBuffers(allocInfo).front());
+	//
+	// 	commandCopyBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+	// 	commandCopyBuffer.copyBuffer(srcBuffer, dstBuffer, vk::BufferCopy(0, 0, size));
+	// 	commandCopyBuffer.end();
+	//
+	// 	_graphics_queue.submit(vk::SubmitInfo({}, {}, {}, 1, &*commandCopyBuffer), nullptr);
+	// 	_graphics_queue.waitIdle();
+	// }
+	//
+	// void VulkanContext::createIndexBuffer()
+	// {
+	// 	vk::DeviceSize bufferSize = sizeof(_vertexIndicies[0]) * _vertexIndicies.size();
+	//
+	// 	vk::raii::Buffer stagingBuffer({});
+	// 	vk::raii::DeviceMemory stagingBufferMemory({});
+	// 	createBuffer(
+	// 		bufferSize,
+	// 		vk::BufferUsageFlagBits::eTransferSrc,
+	// 		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+	// 		stagingBuffer,
+	// 		stagingBufferMemory
+	// 	);
+	//
+	// 	void* data = stagingBufferMemory.mapMemory(0, bufferSize);
+	// 	memcpy(data, _vertexIndicies.data(), (size_t)bufferSize);
+	// 	stagingBufferMemory.unmapMemory();
+	//
+	// 	createBuffer(
+	// 		bufferSize,
+	// 		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+	// 		vk::MemoryPropertyFlagBits::eDeviceLocal,
+	// 		_indexBuffer,
+	// 		_indexBufferMemory
+	// 	);
+	//
+	// 	copyBuffer(stagingBuffer, _indexBuffer, bufferSize);
+	// }
+	//
+	// void VulkanContext::createDescriptorSetLayout()
+	// {
+	// 	constexpr vk::DescriptorSetLayoutBinding uboLayoutBinding(
+	// 		0,
+	// 		vk::DescriptorType::eUniformBuffer,
+	// 		1,
+	// 		vk::ShaderStageFlagBits::eVertex,
+	// 		nullptr
+	// 	);
+	//
+	// 	const vk::DescriptorSetLayoutCreateInfo layoutInfo({}, 1, &uboLayoutBinding);
+	//
+	// 	_descriptorSetLayout = vk::raii::DescriptorSetLayout(_device, layoutInfo);
+	// }
+	//
+	// void VulkanContext::createUniformBuffers()
+	// {
+	// 	_uniformBuffers.clear();
+	// 	_uniformBuffersMemory.clear();
+	// 	_uniformBuffersMapped.clear();
+	//
+	// 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	// 	{
+	// 		constexpr vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+	// 		vk::raii::Buffer buffer({});
+	// 		vk::raii::DeviceMemory bufferMem({});
+	// 		createBuffer(
+	// 			bufferSize,
+	// 			vk::BufferUsageFlagBits::eUniformBuffer,
+	// 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+	// 			buffer,
+	// 			bufferMem
+	// 		);
+	// 		_uniformBuffers.emplace_back(std::move(buffer));
+	// 		_uniformBuffersMemory.emplace_back(std::move(bufferMem));
+	// 		_uniformBuffersMapped.emplace_back(_uniformBuffersMemory[i].mapMemory(0, bufferSize));
+	// 	}
+	// }
+	//
+	// void VulkanContext::updateUniformBuffer(uint32_t currentImage) const
+	// {
+	// 	static auto startTime = std::chrono::high_resolution_clock::now();
+	//
+	// 	const auto currentTime = std::chrono::high_resolution_clock::now();
+	// 	const float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	//
+	// 	UniformBufferObject ubo{};
+	// 	ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	// 	ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	// 	ubo.proj = glm::perspective(
+	// 		glm::radians(45.0f),
+	// 		static_cast<float>(_swapChainExtent.width) / static_cast<float>(_swapChainExtent.height),
+	// 		0.1f,
+	// 		10.0f
+	// 	);
+	//
+	// 	ubo.proj[1][1] *= -1; // Y flip
+	//
+	// 	memcpy(_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+	// }
+	//
+	//
+	// void VulkanContext::createDescriptorPool()
+	// {
+	// 	constexpr vk::DescriptorPoolSize poolSize(vk::DescriptorType::eUniformBuffer, MAX_FRAMES_IN_FLIGHT);
+	//
+	// 	const vk::DescriptorPoolCreateInfo poolInfo(
+	// 		vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+	// 		MAX_FRAMES_IN_FLIGHT,
+	// 		1,
+	// 		&poolSize
+	// 	);
+	//
+	// 	_descriptorPool = vk::raii::DescriptorPool(_device, poolInfo);
+	// }
+	//
+	// void VulkanContext::createDescriptorSets()
+	// {
+	// 	const std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *_descriptorSetLayout);
+	// 	const vk::DescriptorSetAllocateInfo allocInfo(
+	// 		_descriptorPool,
+	// 		static_cast<uint32_t>(layouts.size()),
+	// 		layouts.data()
+	// 	);
+	//
+	// 	_descriptorSets.clear();
+	// 	_descriptorSets = _device.allocateDescriptorSets(allocInfo);
+	//
+	// 	for(size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	// 	{
+	// 		vk::DescriptorBufferInfo bufferInfo(
+	// 			_uniformBuffers[i],
+	// 			0,
+	// 			sizeof(UniformBufferObject)
+	// 		);
+	// 		vk::WriteDescriptorSet descriptorWrite(
+	// 			_descriptorSets[i],
+	// 			0,
+	// 			0,
+	// 			1,
+	// 			vk::DescriptorType::eUniformBuffer,
+	// 			{},
+	// 			&bufferInfo
+	// 		);
+	//
+	// 		_device.updateDescriptorSets(descriptorWrite, {});
+	// 	}
+	// }
 }

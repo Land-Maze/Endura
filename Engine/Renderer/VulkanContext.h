@@ -65,12 +65,16 @@ namespace Renderer
 		/**
 		 * Initializes resources such as: instances, devices, queues, buffers, etc.
 		 */
-		void InitializeVulkan(GLFWwindow* window);
+		void initializeVulkan(GLFWwindow* window);
 
 		/**
 		 * Cleans every resource that requires manual destruction for successful exit
 		 */
-		void Cleanup();
+		void cleanup();
+
+		void beginFrame();
+
+		void endFrame();
 
 		/**
 		 * Draws a frame (it will be deleted after making decisions)
@@ -111,33 +115,19 @@ namespace Renderer
 		vk::raii::CommandPool _commandPool = VK_NULL_HANDLE;
 		std::vector<vk::raii::CommandBuffer> _commandBuffers;
 
-		std::vector<vk::raii::Semaphore> _presentCompleteSemaphores;
-		std::vector<vk::raii::Semaphore> _renderFinishedSemaphores;
-		std::vector<vk::raii::Fence> _inFlightFences;
+		std::vector<vk::raii::Semaphore> m_presentCompleteSemaphores;
+		std::vector<vk::raii::Semaphore> m_renderFinishedSemaphores;
+		std::vector<vk::raii::Fence> m_inFlightFences;
 
-		uint32_t _currentFrame = 0;
-		uint32_t _semaphoreIndex = 0;
+		uint32_t m_currentFrame = 0;
+		uint32_t m_semaphoreIndex = 0;
 
-		GLFWwindow* _window = nullptr; // I hate this, but whatever
+		GLFWwindow* m_window = nullptr; // I hate this, but whatever
 
 		bool _frameBufferResized = false;
 
-
-		vk::raii::Buffer _vertexBuffer = VK_NULL_HANDLE;
-		vk::raii::DeviceMemory _vertexBufferMemory = VK_NULL_HANDLE;
-
-		vk::raii::Buffer _indexBuffer = VK_NULL_HANDLE;
-		vk::raii::DeviceMemory _indexBufferMemory = VK_NULL_HANDLE;
-
-		std::vector<vk::raii::Buffer> _uniformBuffers;
-		std::vector<vk::raii::DeviceMemory> _uniformBuffersMemory;
-		std::vector<void*> _uniformBuffersMapped;
-
-		vk::raii::DescriptorPool _descriptorPool = nullptr;
-		std::vector<vk::raii::DescriptorSet> _descriptorSets;
-
-		std::vector<Vertex> _vertices;
-		std::vector<uint16_t> _vertexIndicies;
+		uint32_t m_currentImageIndex;
+		vk::Result m_currentResult;
 
 		/**
 		 * Creates graphical pipeline
