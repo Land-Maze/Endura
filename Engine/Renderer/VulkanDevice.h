@@ -30,8 +30,18 @@ namespace Renderer
 		 */
 		void create(const vk::raii::Instance& instance, const vk::SurfaceKHR& surface, uint32_t framesInFlight);
 
+		/**
+		 * This is for single-time use. To copy buffers, add data, etc.
+		 *
+		 * @return Command buffer to use
+		 */
 		vk::raii::CommandBuffer beginSingleTimeCommands();
 
+		/**
+		 * Ends single-time command buffer, submits, and waits until it's finished.
+		 *
+		 * @param cmd Command buffer to end and submit
+		 */
 		void endSingleTimeCommands(vk::raii::CommandBuffer&& cmd);
 
 		/**
