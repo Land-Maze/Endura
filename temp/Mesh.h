@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <Renderer/MeshBufferAllocator.h>
-#include <Renderer/VulkanBuffer.h>
+#include <Graphics/MeshBufferAllocator.h>
+#include <Graphics/VulkanBuffer.h>
 
 namespace Renderer
 {

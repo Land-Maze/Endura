@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
 
-#include <Renderer/Renderable.h>
-#include <Renderer/VulkanContext.h>
+#include <../../temp/Renderable.h>
+#include <Graphics/VulkanContext.h>
 
 namespace Renderer
 {

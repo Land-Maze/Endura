@@ -6,9 +6,9 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <glm/glm.hpp>
 
-#include <Renderer/VulkanInstance.h>
-#include <Renderer/VulkanDevice.h>
-#include <Renderer/VulkanSwapchain.h>
+#include <VulkanInstance.h>
+#include <Graphics/VulkanDevice.h>
+#include <VulkanSwapchain.h>
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;

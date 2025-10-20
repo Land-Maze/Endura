@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Renderer/VulkanDevice.h>
+#include <Graphics/VulkanDevice.h>
 #include <vulkan/vulkan_raii.hpp>
 
 #define VMA_IMPLEMENTATION

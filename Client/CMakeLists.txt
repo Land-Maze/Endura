@@ -14,5 +14,5 @@ target_compile_definitions(Client PUBLIC
 )
 
 target_link_libraries(Client
-		PRIVATE EngineCore EngineRenderer EngineUI
+		PRIVATE EngineApplication
 )

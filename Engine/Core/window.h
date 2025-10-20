@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <vulkan/vulkan.h>
 #define GLFW_INCLUDE_VULKAN
 #include <optional>
 #include <GLFW/glfw3.h>

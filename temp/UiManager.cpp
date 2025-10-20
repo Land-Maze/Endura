@@ -2,7 +2,7 @@
 
 namespace UI
 {
-	void UIManager::setWindow(const std::shared_ptr<Core::Window>& window)
+	void UIManager::setWindow(const std::shared_ptr<Application::Window>& window)
 	{
 		this->m_window = window;
 	}

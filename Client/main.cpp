@@ -1,8 +1,8 @@
-#include <Core/Application.h>
+#include <Application/application.h>
 
 int main()
 {
-	Core::Application app;
-	app.run();
+	Application::Application app;
+	app.Run();
 	return 0;
 }

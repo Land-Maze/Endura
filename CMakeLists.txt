@@ -16,6 +16,5 @@ add_subdirectory(Dependencies)
 add_subdirectory(Assets)
 
 add_subdirectory(Engine)
-#add_subdirectory(Game)
 
 add_subdirectory(Client)

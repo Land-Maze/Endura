@@ -1,9 +1,9 @@
-#include "VulkanContext.h"
+#include "../Engine/Graphics/VulkanContext.h"
 
 #include <iostream>
 #include <ostream>
 
-#include <Renderer/Shader.h>
+#include <Shader.h>
 #include <AssetManager.h>
 
 #include <glm/glm.hpp>
